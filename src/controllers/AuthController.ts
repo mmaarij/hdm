@@ -27,7 +27,11 @@ export class AuthController {
         {
           success: true,
           message: "User registered successfully",
-          data: userResponse,
+          data: {
+            ...userResponse,
+            id: userResponse.id as string,
+            email: userResponse.email as string,
+          },
         },
         201
       );
@@ -76,7 +80,14 @@ export class AuthController {
       return c.json({
         success: true,
         message: "Login successful",
-        data: result,
+        data: {
+          ...result,
+          user: {
+            ...result.user,
+            id: result.user.id as string,
+            email: result.user.email as string,
+          },
+        },
       });
     } catch (error) {
       if (error instanceof ZodError) {
@@ -142,7 +153,11 @@ export class AuthController {
 
       return c.json({
         success: true,
-        data: userResponse,
+        data: {
+          ...userResponse,
+          id: userResponse.id as string,
+          email: userResponse.email as string,
+        },
       });
     } catch (error) {
       return c.json(

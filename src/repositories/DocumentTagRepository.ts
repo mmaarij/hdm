@@ -6,6 +6,12 @@ import type {
   PaginationOptions,
 } from "../types/repositories.js";
 import type { DocumentTag, PaginatedResponse } from "../types/domain.js";
+import {
+  createDocumentId,
+  createTagId,
+  type DocumentId,
+  type TagId,
+} from "../types/branded.js";
 
 export class DocumentTagRepository implements IDocumentTagRepository {
   async create(tag: Omit<DocumentTag, "createdAt">): Promise<DocumentTag> {
@@ -20,11 +26,11 @@ export class DocumentTagRepository implements IDocumentTagRepository {
     return this.mapToTag(result);
   }
 
-  async findByDocumentId(documentId: string): Promise<DocumentTag[]> {
+  async findByDocumentId(documentId: DocumentId): Promise<DocumentTag[]> {
     const results = await db
       .select()
       .from(documentTags)
-      .where(eq(documentTags.documentId, documentId));
+      .where(eq(documentTags.documentId, documentId as string));
 
     return results.map((result) => this.mapToTag(result));
   }
@@ -65,19 +71,19 @@ export class DocumentTagRepository implements IDocumentTagRepository {
     };
   }
 
-  async delete(id: string): Promise<boolean> {
+  async delete(id: TagId): Promise<boolean> {
     try {
       const existingTag = await db
         .select()
         .from(documentTags)
-        .where(eq(documentTags.id, id))
+        .where(eq(documentTags.id, id as string))
         .limit(1);
 
       if (existingTag.length === 0) {
         return false;
       }
 
-      await db.delete(documentTags).where(eq(documentTags.id, id));
+      await db.delete(documentTags).where(eq(documentTags.id, id as string));
 
       return true;
     } catch (error) {
@@ -85,18 +91,18 @@ export class DocumentTagRepository implements IDocumentTagRepository {
     }
   }
 
-  async deleteByDocumentId(documentId: string): Promise<number> {
+  async deleteByDocumentId(documentId: DocumentId): Promise<number> {
     try {
       const existingTags = await db
         .select()
         .from(documentTags)
-        .where(eq(documentTags.documentId, documentId));
+        .where(eq(documentTags.documentId, documentId as string));
 
       const count = existingTags.length;
 
       await db
         .delete(documentTags)
-        .where(eq(documentTags.documentId, documentId));
+        .where(eq(documentTags.documentId, documentId as string));
 
       return count;
     } catch (error) {
@@ -106,8 +112,8 @@ export class DocumentTagRepository implements IDocumentTagRepository {
 
   private mapToTag(dbTag: any): DocumentTag {
     return {
-      id: dbTag.id,
-      documentId: dbTag.documentId || dbTag.document_id,
+      id: createTagId(dbTag.id),
+      documentId: createDocumentId(dbTag.documentId || dbTag.document_id),
       tag: dbTag.tag,
       createdAt: new Date(dbTag.createdAt * 1000),
     };

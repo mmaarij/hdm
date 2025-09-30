@@ -57,7 +57,16 @@ export class DocumentController {
         {
           success: true,
           message: "Document uploaded successfully",
-          data: document,
+          data: {
+            ...document,
+            id: document.id as string,
+            filename: document.filename as string,
+            originalName: document.originalName as string,
+            mimeType: document.mimeType as string,
+            size: document.size as number,
+            path: document.path as string,
+            uploadedBy: document.uploadedBy as string,
+          },
         },
         201
       );
@@ -99,7 +108,16 @@ export class DocumentController {
 
       return c.json({
         success: true,
-        data: document,
+        data: {
+          ...document,
+          id: document.id as string,
+          filename: document.filename as string,
+          originalName: document.originalName as string,
+          mimeType: document.mimeType as string,
+          size: document.size as number,
+          path: document.path as string,
+          uploadedBy: document.uploadedBy as string,
+        },
       });
     } catch (error) {
       return c.json(
@@ -133,7 +151,19 @@ export class DocumentController {
 
       return c.json({
         success: true,
-        data: result,
+        data: {
+          ...result,
+          data: result.data.map((doc) => ({
+            ...doc,
+            id: doc.id as string,
+            filename: doc.filename as string,
+            originalName: doc.originalName as string,
+            mimeType: doc.mimeType as string,
+            size: doc.size as number,
+            path: doc.path as string,
+            uploadedBy: doc.uploadedBy as string,
+          })),
+        },
       });
     } catch (error) {
       return c.json(
@@ -180,7 +210,19 @@ export class DocumentController {
 
       return c.json({
         success: true,
-        data: result,
+        data: {
+          ...result,
+          data: result.data.map((doc) => ({
+            ...doc,
+            id: doc.id as string,
+            filename: doc.filename as string,
+            originalName: doc.originalName as string,
+            mimeType: doc.mimeType as string,
+            size: doc.size as number,
+            path: doc.path as string,
+            uploadedBy: doc.uploadedBy as string,
+          })),
+        },
       });
     } catch (error) {
       if (error instanceof ZodError) {

@@ -3,6 +3,15 @@ import { db } from "../models/database.js";
 import { users } from "../models/schema.js";
 import type { IUserRepository } from "../types/repositories.js";
 import type { User } from "../types/domain.js";
+import {
+  type UserId,
+  type Email,
+  type HashedPassword,
+  createUserId,
+  createEmail,
+  createHashedPassword,
+} from "../types/branded.js";
+import { createHash } from "hono/utils/crypto";
 
 export class UserRepository implements IUserRepository {
   async create(userData: Omit<User, "createdAt" | "updatedAt">): Promise<User> {
@@ -18,11 +27,11 @@ export class UserRepository implements IUserRepository {
     return this.mapToUser(user);
   }
 
-  async findById(id: string): Promise<User | null> {
+  async findById(id: UserId): Promise<User | null> {
     const [user] = await db
       .select()
       .from(users)
-      .where(eq(users.id, id))
+      .where(eq(users.id, id as string))
       .limit(1);
 
     return user ? this.mapToUser(user) : null;
@@ -39,7 +48,7 @@ export class UserRepository implements IUserRepository {
   }
 
   async update(
-    id: string,
+    id: UserId,
     updates: Partial<Omit<User, "id" | "createdAt">>
   ): Promise<User | null> {
     const [user] = await db
@@ -48,15 +57,15 @@ export class UserRepository implements IUserRepository {
         ...updates,
         updatedAt: new Date(),
       })
-      .where(eq(users.id, id))
+      .where(eq(users.id, id as string))
       .returning();
 
     return user ? this.mapToUser(user) : null;
   }
 
-  async delete(id: string): Promise<boolean> {
+  async delete(id: UserId): Promise<boolean> {
     try {
-      await db.delete(users).where(eq(users.id, id));
+      await db.delete(users).where(eq(users.id, id as string));
       // Check if user still exists to determine if deletion was successful
       const deletedUser = await this.findById(id);
       return deletedUser === null;
@@ -68,9 +77,9 @@ export class UserRepository implements IUserRepository {
   // Helper method to map database record to domain entity
   private mapToUser(dbUser: any): User {
     return {
-      id: dbUser.id,
-      email: dbUser.email,
-      password: dbUser.password,
+      id: createUserId(dbUser.id),
+      email: createEmail(dbUser.email),
+      password: createHashedPassword(dbUser.password),
       role: dbUser.role,
       createdAt: new Date(dbUser.createdAt * 1000), // SQLite timestamp to Date
       updatedAt: new Date(dbUser.updatedAt * 1000),

@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { UserRole, Permission } from "./domain.js";
+import type { UserId, Email } from "./branded.js";
 
 // Auth DTOs
 export const RegisterRequestSchema = z.object({
@@ -18,8 +19,11 @@ export const LoginRequestSchema = z.object({
 export const LoginResponseSchema = z.object({
   token: z.string(),
   user: z.object({
-    id: z.string(),
-    email: z.string(),
+    id: z.string().transform((val) => val as UserId),
+    email: z
+      .string()
+      .email()
+      .transform((val) => val as Email),
     role: z.nativeEnum(UserRole),
   }),
 });
@@ -58,7 +62,10 @@ export const DocumentMetadataUpdateSchema = z.object({
 
 // Permission DTOs
 export const DocumentPermissionCreateSchema = z.object({
-  userId: z.string().uuid(),
+  userId: z
+    .string()
+    .uuid()
+    .transform((val) => val as UserId),
   permission: z.nativeEnum(Permission),
 });
 

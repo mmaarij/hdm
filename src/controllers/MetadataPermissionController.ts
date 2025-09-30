@@ -44,7 +44,11 @@ export class MetadataController {
         {
           success: true,
           message: "Metadata created successfully",
-          data: metadata,
+          data: {
+            ...metadata,
+            id: metadata.id as string,
+            documentId: metadata.documentId as string,
+          },
         },
         201
       );
@@ -80,7 +84,11 @@ export class MetadataController {
 
       return c.json({
         success: true,
-        data: metadata,
+        data: metadata.map((m) => ({
+          ...m,
+          id: m.id as string,
+          documentId: m.documentId as string,
+        })),
       });
     } catch (error) {
       return c.json(
@@ -128,7 +136,11 @@ export class MetadataController {
       return c.json({
         success: true,
         message: "Metadata updated successfully",
-        data: metadata,
+        data: {
+          ...metadata,
+          id: metadata.id as string,
+          documentId: metadata.documentId as string,
+        },
       });
     } catch (error) {
       if (error instanceof ZodError) {
@@ -225,7 +237,12 @@ export class PermissionController {
         {
           success: true,
           message: "Permission granted successfully",
-          data: permission,
+          data: {
+            ...permission,
+            id: permission.id as string,
+            documentId: permission.documentId as string,
+            userId: permission.userId as string,
+          },
         },
         201
       );
@@ -338,7 +355,12 @@ export class PermissionController {
       return c.json({
         success: true,
         message: "Permission updated successfully",
-        data: permission,
+        data: {
+          ...permission,
+          id: permission.id as string,
+          documentId: permission.documentId as string,
+          userId: permission.userId as string,
+        },
       });
     } catch (error) {
       if (error instanceof ZodError) {

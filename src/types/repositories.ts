@@ -6,6 +6,15 @@ import type {
   DocumentTag,
   PaginatedResponse,
 } from "../types/domain.js";
+import type {
+  UserId,
+  DocumentId,
+  MetadataId,
+  PermissionId,
+  TagId,
+  TokenId,
+  DownloadToken,
+} from "../types/branded.js";
 
 // Common pagination options
 export interface PaginationOptions {
@@ -17,7 +26,7 @@ export interface PaginationOptions {
 export interface DocumentSearchOptions extends PaginationOptions {
   filename?: string;
   mimeType?: string;
-  uploadedBy?: string;
+  uploadedBy?: UserId;
   tags?: string[];
   metadata?: Record<string, string>;
   sortBy?: "filename" | "createdAt" | "size";
@@ -27,91 +36,89 @@ export interface DocumentSearchOptions extends PaginationOptions {
 // Repository interfaces following the contract pattern
 export interface IUserRepository {
   create(user: Omit<User, "createdAt" | "updatedAt">): Promise<User>;
-  findById(id: string): Promise<User | null>;
+  findById(id: UserId): Promise<User | null>;
   findByEmail(email: string): Promise<User | null>;
   update(
-    id: string,
+    id: UserId,
     updates: Partial<Omit<User, "id" | "createdAt">>
   ): Promise<User | null>;
-  delete(id: string): Promise<boolean>;
+  delete(id: UserId): Promise<boolean>;
 }
 
 export interface IDocumentRepository {
   create(
     document: Omit<Document, "createdAt" | "updatedAt">
   ): Promise<Document>;
-  findById(id: string): Promise<Document | null>;
+  findById(id: DocumentId): Promise<Document | null>;
   findByUserId(
-    userId: string,
+    userId: UserId,
     options?: PaginationOptions
   ): Promise<PaginatedResponse<Document>>;
   search(options: DocumentSearchOptions): Promise<PaginatedResponse<Document>>;
   update(
-    id: string,
+    id: DocumentId,
     updates: Partial<Omit<Document, "id" | "createdAt">>
   ): Promise<Document | null>;
-  delete(id: string): Promise<boolean>;
+  delete(id: DocumentId): Promise<boolean>;
 }
 
 export interface IDocumentMetadataRepository {
   create(
     metadata: Omit<DocumentMetadata, "createdAt">
   ): Promise<DocumentMetadata>;
-  findByDocumentId(documentId: string): Promise<DocumentMetadata[]>;
+  findByDocumentId(documentId: DocumentId): Promise<DocumentMetadata[]>;
   update(
-    id: string,
+    id: MetadataId,
     updates: { value: string }
   ): Promise<DocumentMetadata | null>;
-  delete(id: string): Promise<boolean>;
-  deleteByDocumentId(documentId: string): Promise<number>;
+  delete(id: MetadataId): Promise<boolean>;
+  deleteByDocumentId(documentId: DocumentId): Promise<number>;
 }
 
 export interface IDocumentPermissionRepository {
   create(
     permission: Omit<DocumentPermission, "grantedAt">
   ): Promise<DocumentPermission>;
-  findByDocumentId(documentId: string): Promise<DocumentPermission[]>;
-  findByUserId(userId: string): Promise<DocumentPermission[]>;
+  findByDocumentId(documentId: DocumentId): Promise<DocumentPermission[]>;
+  findByUserId(userId: UserId): Promise<DocumentPermission[]>;
   findByDocumentAndUser(
-    documentId: string,
-    userId: string
+    documentId: DocumentId,
+    userId: UserId
   ): Promise<DocumentPermission | null>;
   update(
-    id: string,
+    id: PermissionId,
     updates: { permission: string }
   ): Promise<DocumentPermission | null>;
-  delete(id: string): Promise<boolean>;
-  deleteByDocumentId(documentId: string): Promise<number>;
+  delete(id: PermissionId): Promise<boolean>;
+  deleteByDocumentId(documentId: DocumentId): Promise<number>;
 }
 
 export interface IDocumentTagRepository {
   create(tag: Omit<DocumentTag, "createdAt">): Promise<DocumentTag>;
-  findByDocumentId(documentId: string): Promise<DocumentTag[]>;
+  findByDocumentId(documentId: DocumentId): Promise<DocumentTag[]>;
   findByTag(
     tag: string,
     options?: PaginationOptions
   ): Promise<PaginatedResponse<DocumentTag>>;
-  delete(id: string): Promise<boolean>;
-  deleteByDocumentId(documentId: string): Promise<number>;
+  delete(id: TagId): Promise<boolean>;
+  deleteByDocumentId(documentId: DocumentId): Promise<number>;
 }
 
 // Download token repository interface
 export interface IDownloadTokenRepository {
   create(token: {
-    id: string;
-    documentId: string;
-    token: string;
+    id: TokenId;
+    documentId: DocumentId;
+    token: DownloadToken;
     expiresAt: Date;
-    createdBy: string;
+    createdBy: UserId;
   }): Promise<void>;
-  findByToken(
-    token: string
-  ): Promise<{
-    id: string;
-    documentId: string;
+  findByToken(token: DownloadToken): Promise<{
+    id: TokenId;
+    documentId: DocumentId;
     expiresAt: Date;
     usedAt?: Date;
   } | null>;
-  markAsUsed(id: string): Promise<boolean>;
+  markAsUsed(id: TokenId): Promise<boolean>;
   cleanup(): Promise<number>; // Remove expired tokens
 }

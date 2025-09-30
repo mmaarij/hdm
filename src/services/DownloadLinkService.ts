@@ -5,6 +5,12 @@ import {
   DocumentRepository,
 } from "../repositories/index.js";
 import { config } from "../config/env.js";
+import {
+  createDocumentId,
+  createTokenId,
+  createDownloadToken,
+  createUserId,
+} from "../types/branded.js";
 
 export class DownloadLinkService {
   private tokenRepository: DownloadTokenRepository;
@@ -20,13 +26,15 @@ export class DownloadLinkService {
     userId: string
   ): Promise<string> {
     // Check if document exists
-    const document = await this.documentRepository.findById(documentId);
+    const document = await this.documentRepository.findById(
+      createDocumentId(documentId)
+    );
     if (!document) {
       throw new Error("Document not found");
     }
 
     // Generate secure token
-    const token = crypto.randomBytes(32).toString("hex");
+    const tokenString = crypto.randomBytes(32).toString("hex");
 
     // Calculate expiration time
     const expiresIn = config.DOWNLOAD_LINK_EXPIRES_IN;
@@ -34,14 +42,14 @@ export class DownloadLinkService {
 
     // Store token in database
     await this.tokenRepository.create({
-      id: uuidv4(),
-      documentId,
-      token,
+      id: createTokenId(uuidv4()),
+      documentId: createDocumentId(documentId),
+      token: createDownloadToken(tokenString),
       expiresAt,
-      createdBy: userId,
+      createdBy: createUserId(userId),
     });
 
-    return token;
+    return tokenString;
   }
 
   async validateAndGetDocument(token: string): Promise<{
@@ -50,7 +58,9 @@ export class DownloadLinkService {
     isExpired: boolean;
     isUsed: boolean;
   }> {
-    const tokenRecord = await this.tokenRepository.findByToken(token);
+    const tokenRecord = await this.tokenRepository.findByToken(
+      createDownloadToken(token)
+    );
 
     if (!tokenRecord) {
       return {
@@ -81,12 +91,14 @@ export class DownloadLinkService {
     }
 
     // Mark token as used
-    const tokenRecord = await this.tokenRepository.findByToken(token);
+    const tokenRecord = await this.tokenRepository.findByToken(
+      createDownloadToken(token)
+    );
     if (tokenRecord) {
       await this.tokenRepository.markAsUsed(tokenRecord.id);
     }
 
-    return validation.documentId;
+    return validation.documentId as string;
   }
 
   async cleanupExpiredTokens(): Promise<number> {

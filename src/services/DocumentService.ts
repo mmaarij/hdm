@@ -12,6 +12,26 @@ import type {
   DocumentUploadRequest,
   DocumentSearchRequest,
 } from "../types/dto.js";
+import type {
+  DocumentId,
+  UserId,
+  MetadataId,
+  TagId,
+  FileName,
+  MimeType,
+  FileSize,
+  FilePath,
+} from "../types/branded.js";
+import {
+  createDocumentId,
+  createUserId,
+  createMetadataId,
+  createTagId,
+  createFileName,
+  createMimeType,
+  createFileSize,
+  createFilePath,
+} from "../types/branded.js";
 
 export interface FileUpload {
   filename: string;
@@ -57,20 +77,20 @@ export class DocumentService {
 
       // Create document record
       const document = await this.documentRepository.create({
-        id: uuidv4(),
-        filename: uniqueFilename,
-        originalName: file.filename,
-        mimeType: file.type,
-        size: file.size,
-        path: filePath,
-        uploadedBy,
+        id: createDocumentId(uuidv4()),
+        filename: createFileName(uniqueFilename),
+        originalName: createFileName(file.filename),
+        mimeType: createMimeType(file.type),
+        size: createFileSize(file.size),
+        path: createFilePath(filePath),
+        uploadedBy: createUserId(uploadedBy),
       });
 
       // Add metadata if provided
       if (uploadData.metadata && Object.keys(uploadData.metadata).length > 0) {
         for (const [key, value] of Object.entries(uploadData.metadata)) {
           await this.metadataRepository.create({
-            id: uuidv4(),
+            id: createMetadataId(uuidv4()),
             documentId: document.id,
             key,
             value,
@@ -82,7 +102,7 @@ export class DocumentService {
       if (uploadData.tags && uploadData.tags.length > 0) {
         for (const tag of uploadData.tags) {
           await this.tagRepository.create({
-            id: uuidv4(),
+            id: createTagId(uuidv4()),
             documentId: document.id,
             tag: tag.toLowerCase().trim(),
           });
@@ -102,61 +122,95 @@ export class DocumentService {
   }
 
   async getDocument(id: string): Promise<Document | null> {
-    return this.documentRepository.findById(id);
+    try {
+      const documentId = createDocumentId(id);
+      return this.documentRepository.findById(documentId);
+    } catch (error) {
+      return null;
+    }
   }
 
   async getUserDocuments(userId: string, page: number = 1, limit: number = 20) {
-    return this.documentRepository.findByUserId(userId, { page, limit });
+    try {
+      const userIdBranded = createUserId(userId);
+      return this.documentRepository.findByUserId(userIdBranded, {
+        page,
+        limit,
+      });
+    } catch (error) {
+      throw new Error("Invalid user ID format");
+    }
   }
 
   async searchDocuments(searchOptions: DocumentSearchRequest) {
-    return this.documentRepository.search(searchOptions);
+    const processedOptions = {
+      ...searchOptions,
+      uploadedBy: searchOptions.uploadedBy
+        ? createUserId(searchOptions.uploadedBy)
+        : undefined,
+    };
+    return this.documentRepository.search(processedOptions);
   }
 
   async getDocumentWithMetadata(documentId: string) {
-    const document = await this.documentRepository.findById(documentId);
-    if (!document) {
+    try {
+      const docId = createDocumentId(documentId);
+      const document = await this.documentRepository.findById(docId);
+      if (!document) {
+        return null;
+      }
+
+      const [metadata, tags] = await Promise.all([
+        this.metadataRepository.findByDocumentId(docId),
+        this.tagRepository.findByDocumentId(docId),
+      ]);
+
+      return {
+        ...document,
+        metadata: metadata.reduce((acc, meta) => {
+          acc[meta.key] = meta.value;
+          return acc;
+        }, {} as Record<string, string>),
+        tags: tags.map((tag) => tag.tag),
+      };
+    } catch (error) {
       return null;
     }
-
-    const [metadata, tags] = await Promise.all([
-      this.metadataRepository.findByDocumentId(documentId),
-      this.tagRepository.findByDocumentId(documentId),
-    ]);
-
-    return {
-      ...document,
-      metadata: metadata.reduce((acc, meta) => {
-        acc[meta.key] = meta.value;
-        return acc;
-      }, {} as Record<string, string>),
-      tags: tags.map((tag) => tag.tag),
-    };
   }
 
   async updateDocument(
     id: string,
     updates: Partial<Pick<Document, "originalName">>
   ) {
-    return this.documentRepository.update(id, updates);
+    try {
+      const documentId = createDocumentId(id);
+      return this.documentRepository.update(documentId, updates);
+    } catch (error) {
+      return null;
+    }
   }
 
   async deleteDocument(id: string): Promise<boolean> {
-    const document = await this.documentRepository.findById(id);
-    if (!document) {
+    try {
+      const documentId = createDocumentId(id);
+      const document = await this.documentRepository.findById(documentId);
+      if (!document) {
+        return false;
+      }
+
+      try {
+        // Delete file from filesystem
+        await fs.unlink(document.path as string);
+      } catch (error) {
+        console.error("Failed to delete file from filesystem:", error);
+        // Continue with database cleanup even if file deletion fails
+      }
+
+      // Delete from database (cascade will handle metadata, tags, permissions)
+      return this.documentRepository.delete(documentId);
+    } catch (error) {
       return false;
     }
-
-    try {
-      // Delete file from filesystem
-      await fs.unlink(document.path);
-    } catch (error) {
-      console.error("Failed to delete file from filesystem:", error);
-      // Continue with database cleanup even if file deletion fails
-    }
-
-    // Delete from database (cascade will handle metadata, tags, permissions)
-    return this.documentRepository.delete(id);
   }
 
   async getFileData(document: Document): Promise<Buffer> {

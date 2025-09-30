@@ -10,6 +10,11 @@ import type {
   LoginRequest,
   LoginResponse,
 } from "../types/dto.js";
+import {
+  createUserId,
+  createEmail,
+  createHashedPassword,
+} from "../types/branded.js";
 
 export class AuthService {
   private userRepository: UserRepository;
@@ -30,9 +35,9 @@ export class AuthService {
 
     // Create user
     const user = await this.userRepository.create({
-      id: uuidv4(),
-      email: data.email,
-      password: hashedPassword,
+      id: createUserId(uuidv4()),
+      email: createEmail(data.email),
+      password: createHashedPassword(hashedPassword),
       role: data.role || UserRole.USER,
     });
 
@@ -93,6 +98,11 @@ export class AuthService {
   }
 
   async getUserById(id: string): Promise<User | null> {
-    return this.userRepository.findById(id);
+    try {
+      const userId = createUserId(id);
+      return this.userRepository.findById(userId);
+    } catch (error) {
+      return null;
+    }
   }
 }

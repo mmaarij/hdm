@@ -1,9 +1,24 @@
-// Core domain entities
+// Core domain entities with branded types
+import type {
+  UserId,
+  DocumentId,
+  MetadataId,
+  PermissionId,
+  TagId,
+  TokenId,
+  Email,
+  HashedPassword,
+  FileName,
+  MimeType,
+  FileSize,
+  FilePath,
+  DownloadToken,
+} from "./branded.js";
 
 export interface User {
-  id: string;
-  email: string;
-  password: string;
+  id: UserId;
+  email: Email;
+  password: HashedPassword;
   role: UserRole;
   createdAt: Date;
   updatedAt: Date;
@@ -15,31 +30,31 @@ export enum UserRole {
 }
 
 export interface Document {
-  id: string;
-  filename: string;
-  originalName: string;
-  mimeType: string;
-  size: number;
-  path: string;
-  uploadedBy: string;
+  id: DocumentId;
+  filename: FileName;
+  originalName: FileName;
+  mimeType: MimeType;
+  size: FileSize;
+  path: FilePath;
+  uploadedBy: UserId;
   createdAt: Date;
   updatedAt: Date;
 }
 
 export interface DocumentMetadata {
-  id: string;
-  documentId: string;
+  id: MetadataId;
+  documentId: DocumentId;
   key: string;
   value: string;
   createdAt: Date;
 }
 
 export interface DocumentPermission {
-  id: string;
-  documentId: string;
-  userId: string;
+  id: PermissionId;
+  documentId: DocumentId;
+  userId: UserId;
   permission: Permission;
-  grantedBy: string;
+  grantedBy: UserId;
   grantedAt: Date;
 }
 
@@ -51,8 +66,8 @@ export enum Permission {
 }
 
 export interface DocumentTag {
-  id: string;
-  documentId: string;
+  id: TagId;
+  documentId: DocumentId;
   tag: string;
   createdAt: Date;
 }
