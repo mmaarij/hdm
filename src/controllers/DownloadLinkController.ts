@@ -6,6 +6,7 @@ import {
   handleControllerError,
   createSuccessResponse,
   createSuccessResponseWithoutData,
+  createErrorResponse,
   requireAuthenticatedUser,
 } from "../utils/responseHelpers";
 
@@ -28,13 +29,7 @@ export class DownloadLinkController {
 
       const document = await this.documentService.getDocument(documentId);
       if (!document) {
-        return c.json(
-          {
-            success: false,
-            error: "Document not found",
-          },
-          404
-        );
+        return createErrorResponse(c, "Document not found", 404);
       }
 
       const token = await this.downloadLinkService.generateDownloadLink(
@@ -65,24 +60,16 @@ export class DownloadLinkController {
       const documentId = await this.downloadLinkService.useDownloadToken(token);
 
       if (!documentId) {
-        return c.json(
-          {
-            success: false,
-            error: "Invalid, expired, or already used download token",
-          },
+        return createErrorResponse(
+          c,
+          "Invalid, expired, or already used download token",
           403
         );
       }
 
       const document = await this.documentService.getDocument(documentId);
       if (!document) {
-        return c.json(
-          {
-            success: false,
-            error: "Document not found",
-          },
-          404
-        );
+        return createErrorResponse(c, "Document not found", 404);
       }
 
       const fileData = await this.documentService.getFileData(document);
@@ -103,7 +90,7 @@ export class DownloadLinkController {
     try {
       const user = c.get("user");
       if (!user || user.role !== UserRole.ADMIN) {
-        return c.json({ success: false, error: "Admin access required" }, 403);
+        return createErrorResponse(c, "Admin access required", 403);
       }
 
       const cleanedCount =

@@ -15,8 +15,9 @@ import {
   convertPermissionForResponse,
   createSuccessResponse,
   createSuccessResponseWithoutData,
+  createErrorResponse,
   requireAuthenticatedUser,
-} from "../utils/responseHelpers.js";
+} from "../utils/responseHelpers";
 
 export class MetadataController {
   private metadataService: DocumentMetadataService;
@@ -81,13 +82,7 @@ export class MetadataController {
       );
 
       if (!metadata) {
-        return c.json(
-          {
-            success: false,
-            error: "Metadata not found",
-          },
-          404
-        );
+        return createErrorResponse(c, "Metadata not found", 404);
       }
 
       return c.json(
@@ -110,13 +105,7 @@ export class MetadataController {
       const deleted = await this.metadataService.deleteMetadata(metadataId);
 
       if (!deleted) {
-        return c.json(
-          {
-            success: false,
-            error: "Metadata not found",
-          },
-          404
-        );
+        return createErrorResponse(c, "Metadata not found", 404);
       }
 
       return c.json(
@@ -207,13 +196,7 @@ export class PermissionController {
       );
 
       if (!permission) {
-        return c.json(
-          {
-            success: false,
-            error: "Permission not found",
-          },
-          404
-        );
+        return createErrorResponse(c, "Permission not found", 404);
       }
 
       return c.json(
@@ -238,13 +221,7 @@ export class PermissionController {
       );
 
       if (!revoked) {
-        return c.json(
-          {
-            success: false,
-            error: "Permission not found",
-          },
-          404
-        );
+        return createErrorResponse(c, "Permission not found", 404);
       }
 
       return c.json(

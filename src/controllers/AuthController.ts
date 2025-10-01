@@ -5,6 +5,7 @@ import {
   handleControllerError,
   convertUserForResponse,
   createSuccessResponse,
+  createErrorResponse,
   requireAuthenticatedUser,
 } from "../utils/responseHelpers";
 
@@ -66,13 +67,7 @@ export class AuthController {
       const fullUser = await this.authService.getUserById(currentUser.userId);
 
       if (!fullUser) {
-        return c.json(
-          {
-            success: false,
-            error: "User not found",
-          },
-          404
-        );
+        return createErrorResponse(c, "User not found", 404);
       }
 
       return c.json(createSuccessResponse(convertUserForResponse(fullUser)));

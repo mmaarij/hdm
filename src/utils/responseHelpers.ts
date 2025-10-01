@@ -112,3 +112,18 @@ export function createSuccessResponseWithoutData(message: string) {
     message,
   };
 }
+
+// Error response utilities
+export function createErrorResponse(
+  c: Context,
+  error: string,
+  statusCode: number = 400
+) {
+  return c.json(
+    {
+      success: false,
+      error,
+    },
+    statusCode as any
+  );
+}

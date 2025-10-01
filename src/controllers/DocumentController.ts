@@ -9,6 +9,7 @@ import {
   convertDocumentForResponse,
   createSuccessResponse,
   createSuccessResponseWithoutData,
+  createErrorResponse,
   requireAuthenticatedUser,
 } from "../utils/responseHelpers";
 
@@ -30,19 +31,16 @@ export class DocumentController {
       const { files, fields } = await parseMultipartFormData(c.req.raw);
 
       if (files.length === 0) {
-        return c.json({ success: false, error: "No file provided" }, 400);
+        return createErrorResponse(c, "No file provided", 400);
       }
 
       if (files.length > 1) {
-        return c.json(
-          { success: false, error: "Multiple files not supported" },
-          400
-        );
+        return createErrorResponse(c, "Multiple files not supported", 400);
       }
 
       const file = files[0];
       if (!file) {
-        return c.json({ success: false, error: "No valid file found" }, 400);
+        return createErrorResponse(c, "No valid file found", 400);
       }
 
       const metadata = fields.metadata ? JSON.parse(fields.metadata) : {};
@@ -78,13 +76,7 @@ export class DocumentController {
       const document = await this.documentService.getDocumentWithMetadata(id);
 
       if (!document) {
-        return c.json(
-          {
-            success: false,
-            error: "Document not found",
-          },
-          404
-        );
+        return createErrorResponse(c, "Document not found", 404);
       }
 
       // Check if user has access to this document
@@ -94,13 +86,7 @@ export class DocumentController {
         document
       );
       if (!hasAccess) {
-        return c.json(
-          {
-            success: false,
-            error: "Access denied",
-          },
-          403
-        );
+        return createErrorResponse(c, "Access denied", 403);
       }
 
       return c.json(
@@ -240,13 +226,7 @@ export class DocumentController {
       const document = await this.documentService.getDocument(id);
 
       if (!document) {
-        return c.json(
-          {
-            success: false,
-            error: "Document not found",
-          },
-          404
-        );
+        return createErrorResponse(c, "Document not found", 404);
       }
 
       // Check if user has access to this document
@@ -256,13 +236,7 @@ export class DocumentController {
         document
       );
       if (!hasAccess) {
-        return c.json(
-          {
-            success: false,
-            error: "Access denied",
-          },
-          403
-        );
+        return createErrorResponse(c, "Access denied", 403);
       }
 
       const fileData = await this.documentService.getFileData(document);
@@ -289,35 +263,17 @@ export class DocumentController {
       const document = await this.documentService.getDocument(id);
 
       if (!document) {
-        return c.json(
-          {
-            success: false,
-            error: "Document not found",
-          },
-          404
-        );
+        return createErrorResponse(c, "Document not found", 404);
       }
 
       if (document.uploadedBy !== user.userId && user.role !== UserRole.ADMIN) {
-        return c.json(
-          {
-            success: false,
-            error: "Access denied",
-          },
-          403
-        );
+        return createErrorResponse(c, "Access denied", 403);
       }
 
       const deleted = await this.documentService.deleteDocument(id);
 
       if (!deleted) {
-        return c.json(
-          {
-            success: false,
-            error: "Failed to delete document",
-          },
-          500
-        );
+        return createErrorResponse(c, "Failed to delete document", 500);
       }
 
       return c.json(
