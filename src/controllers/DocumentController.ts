@@ -3,6 +3,7 @@ import { DocumentService } from "../services/DocumentService.js";
 import { DocumentSearchSchema } from "../types/dto.js";
 import { parseMultipartFormData } from "../utils/fileUpload.js";
 import { ZodError } from "zod";
+import { UserRole } from "../types/domain.js";
 
 export class DocumentController {
   private documentService: DocumentService;
@@ -189,7 +190,7 @@ export class DocumentController {
 
       // Scope search based on user role
       let userSearchOptions;
-      if (user.role === "admin") {
+      if (user.role === UserRole.ADMIN) {
         // Admins can search all documents
         userSearchOptions = searchOptions;
       } else {
@@ -307,7 +308,7 @@ export class DocumentController {
         );
       }
 
-      if (document.uploadedBy !== user.userId && user.role !== "admin") {
+      if (document.uploadedBy !== user.userId && user.role !== UserRole.ADMIN) {
         return c.json(
           {
             success: false,

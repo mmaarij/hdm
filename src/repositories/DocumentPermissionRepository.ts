@@ -3,6 +3,7 @@ import { db } from "../models/database.js";
 import { documentPermissions } from "../models/schema.js";
 import type { IDocumentPermissionRepository } from "../types/repositories.js";
 import type { DocumentPermission } from "../types/domain.js";
+import { Permission } from "../types/domain.js";
 import {
   type DocumentId,
   type UserId,
@@ -74,7 +75,7 @@ export class DocumentPermissionRepository
     const [result] = await db
       .update(documentPermissions)
       .set({
-        permission: updates.permission as "read" | "write" | "delete" | "admin",
+        permission: updates.permission as Permission,
       })
       .where(eq(documentPermissions.id, id as string))
       .returning();

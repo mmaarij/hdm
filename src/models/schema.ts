@@ -1,14 +1,15 @@
 import { sqliteTable, text, integer, blob } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
+import { UserRole } from "../types/domain.js";
 
 // Users table
 export const users = sqliteTable("users", {
   id: text("id").primaryKey(), // UUID
   email: text("email").notNull().unique(),
   password: text("password").notNull(),
-  role: text("role", { enum: ["admin", "user"] })
+  role: text("role", { enum: [UserRole.ADMIN, UserRole.USER] })
     .notNull()
-    .default("user"),
+    .default(UserRole.USER),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .default(sql`(unixepoch())`),

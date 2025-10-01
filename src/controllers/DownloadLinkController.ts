@@ -1,6 +1,7 @@
 import type { Context } from "hono";
 import { DownloadLinkService } from "../services/DownloadLinkService.js";
 import { DocumentService } from "../services/DocumentService.js";
+import { UserRole } from "../types/domain.js";
 
 export class DownloadLinkController {
   private downloadLinkService: DownloadLinkService;
@@ -114,7 +115,7 @@ export class DownloadLinkController {
   cleanupExpiredTokens = async (c: Context) => {
     try {
       const user = c.get("user");
-      if (!user || user.role !== "admin") {
+      if (!user || user.role !== UserRole.ADMIN) {
         return c.json({ success: false, error: "Admin access required" }, 403);
       }
 
