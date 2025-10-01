@@ -2,6 +2,7 @@ import type { Context } from "hono";
 import { DownloadLinkService } from "../services/DownloadLinkService";
 import { DocumentService } from "../services/DocumentService";
 import { UserRole } from "../types/domain";
+import { StatusCode } from "../types/statusCodes";
 import {
   handleControllerError,
   createSuccessResponse,
@@ -29,7 +30,11 @@ export class DownloadLinkController {
 
       const document = await this.documentService.getDocument(documentId);
       if (!document) {
-        return createErrorResponse(c, "Document not found", 404);
+        return createErrorResponse(
+          c,
+          "Document not found",
+          StatusCode.NOT_FOUND
+        );
       }
 
       const token = await this.downloadLinkService.generateDownloadLink(
@@ -63,13 +68,17 @@ export class DownloadLinkController {
         return createErrorResponse(
           c,
           "Invalid, expired, or already used download token",
-          403
+          StatusCode.FORBIDDEN
         );
       }
 
       const document = await this.documentService.getDocument(documentId);
       if (!document) {
-        return createErrorResponse(c, "Document not found", 404);
+        return createErrorResponse(
+          c,
+          "Document not found",
+          StatusCode.NOT_FOUND
+        );
       }
 
       const fileData = await this.documentService.getFileData(document);
@@ -90,7 +99,11 @@ export class DownloadLinkController {
     try {
       const user = c.get("user");
       if (!user || user.role !== UserRole.ADMIN) {
-        return createErrorResponse(c, "Admin access required", 403);
+        return createErrorResponse(
+          c,
+          "Admin access required",
+          StatusCode.FORBIDDEN
+        );
       }
 
       const cleanedCount =

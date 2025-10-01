@@ -3,6 +3,7 @@ import {
   DocumentMetadataService,
   DocumentPermissionService,
 } from "../services/MetadataPermissionService";
+import { StatusCode } from "../types/statusCodes";
 import {
   DocumentMetadataCreateSchema,
   DocumentMetadataUpdateSchema,
@@ -45,7 +46,7 @@ export class MetadataController {
           convertMetadataForResponse(metadata),
           "Metadata created successfully"
         ),
-        201
+        StatusCode.CREATED as any
       );
     } catch (error) {
       return handleControllerError(c, error);
@@ -82,7 +83,11 @@ export class MetadataController {
       );
 
       if (!metadata) {
-        return createErrorResponse(c, "Metadata not found", 404);
+        return createErrorResponse(
+          c,
+          "Metadata not found",
+          StatusCode.NOT_FOUND
+        );
       }
 
       return c.json(
@@ -105,7 +110,11 @@ export class MetadataController {
       const deleted = await this.metadataService.deleteMetadata(metadataId);
 
       if (!deleted) {
-        return createErrorResponse(c, "Metadata not found", 404);
+        return createErrorResponse(
+          c,
+          "Metadata not found",
+          StatusCode.NOT_FOUND
+        );
       }
 
       return c.json(
@@ -145,7 +154,7 @@ export class PermissionController {
           convertPermissionForResponse(permission),
           "Permission granted successfully"
         ),
-        201
+        StatusCode.CREATED as any
       );
     } catch (error) {
       return handleControllerError(c, error);
@@ -196,7 +205,11 @@ export class PermissionController {
       );
 
       if (!permission) {
-        return createErrorResponse(c, "Permission not found", 404);
+        return createErrorResponse(
+          c,
+          "Permission not found",
+          StatusCode.NOT_FOUND
+        );
       }
 
       return c.json(
@@ -221,7 +234,11 @@ export class PermissionController {
       );
 
       if (!revoked) {
-        return createErrorResponse(c, "Permission not found", 404);
+        return createErrorResponse(
+          c,
+          "Permission not found",
+          StatusCode.NOT_FOUND
+        );
       }
 
       return c.json(

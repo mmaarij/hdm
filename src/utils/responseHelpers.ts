@@ -1,5 +1,6 @@
 import type { Context } from "hono";
 import { ZodError } from "zod";
+import { StatusCode } from "../types/statusCodes";
 import type {
   DocumentMetadata,
   DocumentPermission,
@@ -51,7 +52,7 @@ export function convertPermissionForResponse(permission: DocumentPermission) {
 export function handleControllerError(
   c: Context,
   error: unknown,
-  defaultStatusCode: number = 500
+  defaultStatusCode: number = StatusCode.INTERNAL_SERVER_ERROR
 ) {
   if (error instanceof ZodError) {
     return c.json(
@@ -60,12 +61,15 @@ export function handleControllerError(
         error: "Validation error",
         details: error.issues,
       },
-      400
+      StatusCode.BAD_REQUEST as any
     );
   }
 
   if (error instanceof Error) {
-    const statusCode = defaultStatusCode === 500 ? 400 : defaultStatusCode;
+    const statusCode =
+      defaultStatusCode === StatusCode.INTERNAL_SERVER_ERROR
+        ? StatusCode.BAD_REQUEST
+        : defaultStatusCode;
     return c.json(
       {
         success: false,
@@ -80,7 +84,7 @@ export function handleControllerError(
       success: false,
       error: "Internal server error",
     },
-    500
+    StatusCode.INTERNAL_SERVER_ERROR as any
   );
 }
 
@@ -88,7 +92,10 @@ export function handleControllerError(
 export function requireAuthenticatedUser(c: Context) {
   const user = c.get("user");
   if (!user) {
-    return c.json({ success: false, error: "Authentication required" }, 401);
+    return c.json(
+      { success: false, error: "Authentication required" },
+      StatusCode.UNAUTHORIZED as any
+    );
   }
   return null; // No error, proceed
 }
@@ -97,7 +104,7 @@ export function requireAuthenticatedUser(c: Context) {
 export function createSuccessResponse(
   data: any,
   message?: string,
-  statusCode: number = 200
+  statusCode: number = StatusCode.OK
 ) {
   return {
     success: true,
@@ -117,7 +124,7 @@ export function createSuccessResponseWithoutData(message: string) {
 export function createErrorResponse(
   c: Context,
   error: string,
-  statusCode: number = 400
+  statusCode: number = StatusCode.BAD_REQUEST
 ) {
   return c.json(
     {

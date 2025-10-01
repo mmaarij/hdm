@@ -1,6 +1,7 @@
 import type { Context } from "hono";
 import { AuthService } from "../services/AuthService";
 import { RegisterRequestSchema, LoginRequestSchema } from "../types/dto";
+import { StatusCode } from "../types/statusCodes";
 import {
   handleControllerError,
   convertUserForResponse,
@@ -27,7 +28,7 @@ export class AuthController {
           convertUserForResponse(user),
           "User registered successfully"
         ),
-        201
+        StatusCode.CREATED as any
       );
     } catch (error) {
       return handleControllerError(c, error);
@@ -54,7 +55,7 @@ export class AuthController {
         )
       );
     } catch (error) {
-      return handleControllerError(c, error, 401);
+      return handleControllerError(c, error, StatusCode.UNAUTHORIZED);
     }
   };
 
@@ -67,7 +68,7 @@ export class AuthController {
       const fullUser = await this.authService.getUserById(currentUser.userId);
 
       if (!fullUser) {
-        return createErrorResponse(c, "User not found", 404);
+        return createErrorResponse(c, "User not found", StatusCode.NOT_FOUND);
       }
 
       return c.json(createSuccessResponse(convertUserForResponse(fullUser)));
