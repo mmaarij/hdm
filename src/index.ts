@@ -1,14 +1,14 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
-import { AuthController } from "./controllers/AuthController.js";
-import { DocumentController } from "./controllers/DocumentController.js";
+import { AuthController } from "./controllers/AuthController";
+import { DocumentController } from "./controllers/DocumentController";
 import {
   MetadataController,
   PermissionController,
-} from "./controllers/MetadataPermissionController.js";
-import { DownloadLinkController } from "./controllers/DownloadLinkController.js";
-import { authenticate, requireAdmin } from "./middleware/auth.js";
+} from "./controllers/MetadataPermissionController";
+import { DownloadLinkController } from "./controllers/DownloadLinkController";
+import { authenticate, requireAdmin } from "./middleware/auth";
 
 const app = new Hono();
 
@@ -47,8 +47,12 @@ app.get(
   authenticate,
   documentController.searchDocuments
 );
-app.get("/api/v1/documents/:id", documentController.getDocument);
-app.get("/api/v1/documents/:id/download", documentController.downloadDocument);
+app.get("/api/v1/documents/:id", authenticate, documentController.getDocument);
+app.get(
+  "/api/v1/documents/:id/download",
+  authenticate,
+  documentController.downloadDocument
+);
 app.delete(
   "/api/v1/documents/:id",
   authenticate,
@@ -118,7 +122,6 @@ app.post(
 
 const port = process.env.PORT || 3000;
 
-console.log(`🚀 Server running on port ${port}`);
 export default {
   port,
   fetch: app.fetch,

@@ -3,14 +3,14 @@ import crypto from "crypto";
 import {
   DownloadTokenRepository,
   DocumentRepository,
-} from "../repositories/index.js";
-import { config } from "../config/env.js";
+} from "../repositories/index";
+import { config } from "../config/env";
 import {
   createDocumentId,
   createTokenId,
   createDownloadToken,
   createUserId,
-} from "../types/branded.js";
+} from "../types/branded";
 
 export class DownloadLinkService {
   private tokenRepository: DownloadTokenRepository;

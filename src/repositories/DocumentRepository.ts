@@ -1,12 +1,12 @@
-import { eq, like, desc, asc, count } from "drizzle-orm";
-import { db } from "../models/database.js";
-import { documents } from "../models/schema.js";
+import { eq, like, desc, asc, count, and, or, inArray } from "drizzle-orm";
+import { db } from "../models/database";
+import { documents, documentMetadata, documentTags } from "../models/schema";
 import type {
   IDocumentRepository,
   PaginationOptions,
   DocumentSearchOptions,
-} from "../types/repositories.js";
-import type { Document, PaginatedResponse } from "../types/domain.js";
+} from "../types/repositories";
+import type { Document, PaginatedResponse } from "../types/domain";
 import {
   type DocumentId,
   type UserId,
@@ -89,25 +89,183 @@ export class DocumentRepository implements IDocumentRepository {
   ): Promise<PaginatedResponse<Document>> {
     const offset = (options.page - 1) * options.limit;
 
-    // Build base query
-    let whereClause = undefined;
+    // Check if we have any actual meaningful search criteria (excluding pagination, sorting, and user scope)
+    // Note: uploadedBy is a scope filter, not a search criterion
+    const hasSearchCriteria = !!(
+      (options.filename && options.filename.trim().length >= 2) ||
+      (options.mimeType && options.mimeType.trim().length > 0) ||
+      (options.tags &&
+        options.tags.length > 0 &&
+        options.tags.some((tag) => tag.trim().length >= 2)) ||
+      (options.metadata &&
+        Object.keys(options.metadata).length > 0 &&
+        Object.entries(options.metadata).some(
+          ([key, value]) => key.trim().length > 0 && value.trim().length >= 2
+        ))
+    );
 
-    // Simple filtering for now - we'll enhance this later with joins
-    if (options.filename) {
-      whereClause = like(documents.filename, `%${options.filename}%`);
-    } else if (options.mimeType) {
-      whereClause = eq(documents.mimeType, options.mimeType);
-    } else if (options.uploadedBy) {
-      whereClause = eq(documents.uploadedBy, options.uploadedBy as string);
+    // If no meaningful search criteria provided, return empty results
+    if (!hasSearchCriteria) {
+      return {
+        data: [],
+        pagination: {
+          page: options.page,
+          limit: options.limit,
+          total: 0,
+          totalPages: 0,
+        },
+      };
     }
+
+    // Build where conditions array
+    const conditions = [];
+
+    // Filename search (case-insensitive partial match) - minimum 2 characters
+    if (options.filename && options.filename.trim().length >= 2) {
+      const searchTerm = options.filename.trim().toLowerCase();
+      conditions.push(
+        or(
+          like(documents.filename, `%${searchTerm}%`),
+          like(documents.originalName, `%${searchTerm}%`)
+        )
+      );
+    }
+
+    // Exact MIME type match
+    if (options.mimeType) {
+      conditions.push(eq(documents.mimeType, options.mimeType));
+    }
+
+    // Uploaded by user filter
+    if (options.uploadedBy) {
+      conditions.push(eq(documents.uploadedBy, options.uploadedBy as string));
+    }
+
+    // Build main where clause
+    const mainWhereClause =
+      conditions.length > 0 ? and(...conditions) : undefined;
+
+    // Handle tag and metadata searches with subqueries
+    let documentIdsFromTags: string[] | null = null;
+    let documentIdsFromMetadata: string[] | null = null;
+
+    // Search by tags if provided - filter meaningful tags
+    if (options.tags && options.tags.length > 0) {
+      const meaningfulTags = options.tags
+        .map((tag) => tag.toLowerCase().trim())
+        .filter((tag) => tag.length >= 2);
+
+      if (meaningfulTags.length === 0) {
+        documentIdsFromTags = [];
+      } else {
+        const tagResults = await db
+          .selectDistinct({ documentId: documentTags.documentId })
+          .from(documentTags)
+          .where(inArray(documentTags.tag, meaningfulTags));
+
+        documentIdsFromTags = tagResults.map((r) => r.documentId);
+      }
+
+      // If searching by tags but no documents found with those tags, return empty
+      if (documentIdsFromTags !== null && documentIdsFromTags.length === 0) {
+        return {
+          data: [],
+          pagination: {
+            page: options.page,
+            limit: options.limit,
+            total: 0,
+            totalPages: 0,
+          },
+        };
+      }
+    }
+
+    // Search by metadata if provided - filter meaningful search terms
+    if (options.metadata && Object.keys(options.metadata).length > 0) {
+      const meaningfulMetadata = Object.entries(options.metadata).filter(
+        ([key, value]) => key.trim().length > 0 && value.trim().length >= 2
+      );
+
+      if (meaningfulMetadata.length === 0) {
+        documentIdsFromMetadata = [];
+      } else {
+        const metadataConditions = meaningfulMetadata.map(([key, value]) =>
+          and(
+            eq(documentMetadata.key, key.trim()),
+            like(documentMetadata.value, `%${value.trim()}%`)
+          )
+        );
+
+        const metadataResults = await db
+          .selectDistinct({ documentId: documentMetadata.documentId })
+          .from(documentMetadata)
+          .where(or(...metadataConditions));
+
+        documentIdsFromMetadata = metadataResults.map((r) => r.documentId);
+      }
+
+      // If searching by metadata but no documents found, return empty
+      if (
+        documentIdsFromMetadata !== null &&
+        documentIdsFromMetadata.length === 0
+      ) {
+        return {
+          data: [],
+          pagination: {
+            page: options.page,
+            limit: options.limit,
+            total: 0,
+            totalPages: 0,
+          },
+        };
+      }
+    }
+
+    // Combine document ID filters from tags and metadata
+    const additionalIdConditions = [];
+    if (documentIdsFromTags !== null) {
+      if (documentIdsFromTags.length > 0) {
+        additionalIdConditions.push(inArray(documents.id, documentIdsFromTags));
+      }
+    }
+    if (documentIdsFromMetadata !== null) {
+      if (documentIdsFromMetadata.length > 0) {
+        additionalIdConditions.push(
+          inArray(documents.id, documentIdsFromMetadata)
+        );
+      }
+    }
+
+    // Combine all conditions
+    const allConditions = [];
+    if (mainWhereClause) allConditions.push(mainWhereClause);
+    if (additionalIdConditions.length > 0) {
+      allConditions.push(and(...additionalIdConditions));
+    }
+
+    const finalWhereClause =
+      allConditions.length > 0 ? and(...allConditions) : undefined;
 
     // Get total count
     const totalResults = await db
       .select({ count: count() })
       .from(documents)
-      .where(whereClause);
+      .where(finalWhereClause);
 
     const total = totalResults[0]?.count || 0;
+
+    // If no results found, return empty
+    if (total === 0) {
+      return {
+        data: [],
+        pagination: {
+          page: options.page,
+          limit: options.limit,
+          total: 0,
+          totalPages: 0,
+        },
+      };
+    }
 
     // Get documents with sorting
     const sortColumn =
@@ -122,7 +280,7 @@ export class DocumentRepository implements IDocumentRepository {
     const documentList = await db
       .select()
       .from(documents)
-      .where(whereClause)
+      .where(finalWhereClause)
       .orderBy(sortOrder(sortColumn))
       .limit(options.limit)
       .offset(offset);

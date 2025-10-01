@@ -1,13 +1,13 @@
 import type { Context } from "hono";
-import { DownloadLinkService } from "../services/DownloadLinkService.js";
-import { DocumentService } from "../services/DocumentService.js";
-import { UserRole } from "../types/domain.js";
+import { DownloadLinkService } from "../services/DownloadLinkService";
+import { DocumentService } from "../services/DocumentService";
+import { UserRole } from "../types/domain";
 import {
   handleControllerError,
   createSuccessResponse,
   createSuccessResponseWithoutData,
   requireAuthenticatedUser,
-} from "../utils/responseHelpers.js";
+} from "../utils/responseHelpers";
 
 export class DownloadLinkController {
   private downloadLinkService: DownloadLinkService;

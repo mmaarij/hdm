@@ -1,11 +1,11 @@
 import { eq, like, count, desc } from "drizzle-orm";
-import { db } from "../models/database.js";
-import { documentTags } from "../models/schema.js";
+import { db } from "../models/database";
+import { documentTags } from "../models/schema";
 import type {
   IDocumentTagRepository,
   PaginationOptions,
-} from "../types/repositories.js";
-import type { DocumentTag, PaginatedResponse } from "../types/domain.js";
+} from "../types/repositories";
+import type { DocumentTag, PaginatedResponse } from "../types/domain";
 import {
   createDocumentId,
   createTagId,

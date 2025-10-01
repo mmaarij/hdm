@@ -1,8 +1,8 @@
 import { eq } from "drizzle-orm";
-import { db } from "../models/database.js";
-import { users } from "../models/schema.js";
-import type { IUserRepository } from "../types/repositories.js";
-import type { User } from "../types/domain.js";
+import { db } from "../models/database";
+import { users } from "../models/schema";
+import type { IUserRepository } from "../types/repositories";
+import type { User } from "../types/domain";
 import {
   type UserId,
   type Email,
@@ -10,7 +10,7 @@ import {
   createUserId,
   createEmail,
   createHashedPassword,
-} from "../types/branded.js";
+} from "../types/branded";
 
 export class UserRepository implements IUserRepository {
   async create(userData: Omit<User, "createdAt" | "updatedAt">): Promise<User> {

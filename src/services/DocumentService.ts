@@ -1,17 +1,17 @@
 import { promises as fs } from "fs";
 import { join, extname, dirname } from "path";
 import { v4 as uuidv4 } from "uuid";
-import { config } from "../config/env.js";
+import { config } from "../config/env";
 import {
   DocumentRepository,
   DocumentMetadataRepository,
   DocumentTagRepository,
-} from "../repositories/index.js";
-import type { Document } from "../types/domain.js";
+} from "../repositories/index";
+import type { Document } from "../types/domain";
 import type {
   DocumentUploadRequest,
   DocumentSearchRequest,
-} from "../types/dto.js";
+} from "../types/dto";
 import type {
   DocumentId,
   UserId,

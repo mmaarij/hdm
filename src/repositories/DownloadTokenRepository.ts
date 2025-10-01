@@ -1,7 +1,7 @@
-import { eq, lt } from "drizzle-orm";
-import { db } from "../models/database.js";
-import { downloadTokens } from "../models/schema.js";
-import type { IDownloadTokenRepository } from "../types/repositories.js";
+import { eq, lte } from "drizzle-orm";
+import { db } from "../models/database";
+import { downloadTokens } from "../models/schema";
+import type { IDownloadTokenRepository } from "../types/repositories";
 import {
   type TokenId,
   type DocumentId,
@@ -72,12 +72,12 @@ export class DownloadTokenRepository implements IDownloadTokenRepository {
       const expiredTokens = await db
         .select()
         .from(downloadTokens)
-        .where(lt(downloadTokens.expiresAt, now));
+        .where(lte(downloadTokens.expiresAt, now));
 
       const count = expiredTokens.length;
 
       // Remove expired tokens
-      await db.delete(downloadTokens).where(lt(downloadTokens.expiresAt, now));
+      await db.delete(downloadTokens).where(lte(downloadTokens.expiresAt, now));
 
       return count;
     } catch (error) {

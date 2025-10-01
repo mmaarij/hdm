@@ -1,21 +1,24 @@
 import type { Context } from "hono";
-import { DocumentService } from "../services/DocumentService.js";
-import { DocumentSearchSchema } from "../types/dto.js";
-import { parseMultipartFormData } from "../utils/fileUpload.js";
-import { UserRole } from "../types/domain.js";
+import { DocumentService } from "../services/DocumentService";
+import { DocumentPermissionService } from "../services/MetadataPermissionService";
+import { DocumentSearchSchema } from "../types/dto";
+import { parseMultipartFormData } from "../utils/fileUpload";
+import { UserRole, Permission, type Document } from "../types/domain";
 import {
   handleControllerError,
   convertDocumentForResponse,
   createSuccessResponse,
   createSuccessResponseWithoutData,
   requireAuthenticatedUser,
-} from "../utils/responseHelpers.js";
+} from "../utils/responseHelpers";
 
 export class DocumentController {
   private documentService: DocumentService;
+  private permissionService: DocumentPermissionService;
 
   constructor() {
     this.documentService = new DocumentService();
+    this.permissionService = new DocumentPermissionService();
   }
 
   upload = async (c: Context) => {
@@ -66,6 +69,11 @@ export class DocumentController {
 
   getDocument = async (c: Context) => {
     try {
+      // Require authentication for document access
+      const authError = requireAuthenticatedUser(c);
+      if (authError) return authError;
+
+      const user = c.get("user");
       const id = c.req.param("id");
       const document = await this.documentService.getDocumentWithMetadata(id);
 
@@ -76,6 +84,22 @@ export class DocumentController {
             error: "Document not found",
           },
           404
+        );
+      }
+
+      // Check if user has access to this document
+      const hasAccess = await this.permissionService.checkDocumentAccess(
+        user.userId,
+        user.role,
+        document
+      );
+      if (!hasAccess) {
+        return c.json(
+          {
+            success: false,
+            error: "Access denied",
+          },
+          403
         );
       }
 
@@ -129,7 +153,55 @@ export class DocumentController {
 
       const user = c.get("user");
       const query = c.req.query();
-      const searchOptions = DocumentSearchSchema.parse(query);
+
+      // Parse metadata query parameters (e.g., metadata[key]=value)
+      const processedQuery: Record<string, any> = { ...query };
+      const metadata: Record<string, string> = {};
+
+      // Extract metadata parameters and convert to proper object format
+      Object.keys(query).forEach((key) => {
+        const metadataMatch = key.match(/^metadata\[(.+)\]$/);
+        if (metadataMatch && metadataMatch[1]) {
+          const metadataKey = metadataMatch[1];
+          const metadataValue = query[key];
+          if (metadataValue && metadataKey) {
+            metadata[metadataKey] = metadataValue;
+          }
+          delete processedQuery[key];
+        }
+      });
+
+      // Add parsed metadata to query if any were found
+      if (Object.keys(metadata).length > 0) {
+        processedQuery.metadata = metadata;
+      }
+
+      const searchOptions = DocumentSearchSchema.parse(processedQuery);
+
+      // Check if any actual search criteria were provided (not just pagination/sorting)
+      const hasActualSearchCriteria = !!(
+        searchOptions.filename ||
+        searchOptions.mimeType ||
+        (searchOptions.uploadedBy && user.role === UserRole.ADMIN) || // Only admins can search by specific user
+        (searchOptions.tags && searchOptions.tags.length > 0) ||
+        (searchOptions.metadata &&
+          Object.keys(searchOptions.metadata).length > 0)
+      );
+
+      // If no search criteria provided, return empty results
+      if (!hasActualSearchCriteria) {
+        return c.json(
+          createSuccessResponse({
+            data: [],
+            pagination: {
+              page: searchOptions.page,
+              limit: searchOptions.limit,
+              total: 0,
+              totalPages: 0,
+            },
+          })
+        );
+      }
 
       // Scope search based on user role
       let userSearchOptions;
@@ -159,6 +231,11 @@ export class DocumentController {
 
   downloadDocument = async (c: Context) => {
     try {
+      // Require authentication for document download
+      const authError = requireAuthenticatedUser(c);
+      if (authError) return authError;
+
+      const user = c.get("user");
       const id = c.req.param("id");
       const document = await this.documentService.getDocument(id);
 
@@ -169,6 +246,22 @@ export class DocumentController {
             error: "Document not found",
           },
           404
+        );
+      }
+
+      // Check if user has access to this document
+      const hasAccess = await this.permissionService.checkDocumentAccess(
+        user.userId,
+        user.role,
+        document
+      );
+      if (!hasAccess) {
+        return c.json(
+          {
+            success: false,
+            error: "Access denied",
+          },
+          403
         );
       }
 

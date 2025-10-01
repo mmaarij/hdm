@@ -1,10 +1,10 @@
 // Repository implementations
-export { UserRepository } from "./UserRepository.js";
-export { DocumentRepository } from "./DocumentRepository.js";
-export { DocumentMetadataRepository } from "./DocumentMetadataRepository.js";
-export { DocumentPermissionRepository } from "./DocumentPermissionRepository.js";
-export { DocumentTagRepository } from "./DocumentTagRepository.js";
-export { DownloadTokenRepository } from "./DownloadTokenRepository.js";
+export { UserRepository } from "./UserRepository";
+export { DocumentRepository } from "./DocumentRepository";
+export { DocumentMetadataRepository } from "./DocumentMetadataRepository";
+export { DocumentPermissionRepository } from "./DocumentPermissionRepository";
+export { DocumentTagRepository } from "./DocumentTagRepository";
+export { DownloadTokenRepository } from "./DownloadTokenRepository";
 
 // Repository interfaces
 export type {

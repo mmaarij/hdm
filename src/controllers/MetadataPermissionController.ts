@@ -2,13 +2,13 @@ import type { Context } from "hono";
 import {
   DocumentMetadataService,
   DocumentPermissionService,
-} from "../services/MetadataPermissionService.js";
+} from "../services/MetadataPermissionService";
 import {
   DocumentMetadataCreateSchema,
   DocumentMetadataUpdateSchema,
   DocumentPermissionCreateSchema,
   DocumentPermissionUpdateSchema,
-} from "../types/dto.js";
+} from "../types/dto";
 import {
   handleControllerError,
   convertMetadataForResponse,

@@ -1,8 +1,8 @@
 import { eq } from "drizzle-orm";
-import { db } from "../models/database.js";
-import { documentMetadata } from "../models/schema.js";
-import type { IDocumentMetadataRepository } from "../types/repositories.js";
-import type { DocumentMetadata } from "../types/domain.js";
+import { db } from "../models/database";
+import { documentMetadata } from "../models/schema";
+import type { IDocumentMetadataRepository } from "../types/repositories";
+import type { DocumentMetadata } from "../types/domain";
 import {
   createDocumentId,
   createMetadataId,

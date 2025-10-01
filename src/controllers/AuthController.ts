@@ -1,12 +1,12 @@
 import type { Context } from "hono";
-import { AuthService } from "../services/AuthService.js";
-import { RegisterRequestSchema, LoginRequestSchema } from "../types/dto.js";
+import { AuthService } from "../services/AuthService";
+import { RegisterRequestSchema, LoginRequestSchema } from "../types/dto";
 import {
   handleControllerError,
   convertUserForResponse,
   createSuccessResponse,
   requireAuthenticatedUser,
-} from "../utils/responseHelpers.js";
+} from "../utils/responseHelpers";
 
 export class AuthController {
   private authService: AuthService;

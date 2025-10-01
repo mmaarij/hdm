@@ -2,20 +2,21 @@ import { v4 as uuidv4 } from "uuid";
 import {
   DocumentMetadataRepository,
   DocumentPermissionRepository,
-} from "../repositories/index.js";
-import type { DocumentMetadata, DocumentPermission } from "../types/domain.js";
+} from "../repositories/index";
+import type { DocumentMetadata, DocumentPermission } from "../types/domain";
+import { UserRole } from "../types/domain";
 import type {
   DocumentMetadataCreateRequest,
   DocumentMetadataUpdateRequest,
   DocumentPermissionCreateRequest,
   DocumentPermissionUpdateRequest,
-} from "../types/dto.js";
+} from "../types/dto";
 import {
   createDocumentId,
   createMetadataId,
   createPermissionId,
   createUserId,
-} from "../types/branded.js";
+} from "../types/branded";
 
 export class DocumentMetadataService {
   private metadataRepository: DocumentMetadataRepository;
@@ -129,5 +130,32 @@ export class DocumentPermissionService {
       createDocumentId(documentId),
       createUserId(userId)
     );
+  }
+
+  async checkDocumentAccess(
+    userId: string,
+    userRole: UserRole,
+    document: { id: string; uploadedBy: string }
+  ): Promise<boolean> {
+    // Admin users can access any document
+    if (userRole === UserRole.ADMIN) {
+      return true;
+    }
+
+    // Document owner can access their own documents
+    if (document.uploadedBy === userId) {
+      return true;
+    }
+
+    // Check if user has explicit permission to access this document
+    try {
+      const permissions = await this.getDocumentPermissions(document.id);
+
+      // User has access if they have any permission (read, write, delete, admin)
+      return permissions.some((permission) => permission.userId === userId);
+    } catch (error) {
+      // If there's an error checking permissions, deny access for security
+      return false;
+    }
   }
 }

@@ -1,6 +1,6 @@
 import { sqliteTable, text, integer, blob } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
-import { UserRole } from "../types/domain.js";
+import { UserRole } from "../types/domain";
 
 // Users table
 export const users = sqliteTable("users", {

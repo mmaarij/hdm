@@ -1,6 +1,6 @@
 import type { Context, Next } from "hono";
-import { AuthService } from "../services/AuthService.js";
-import { UserRole } from "../types/domain.js";
+import { AuthService } from "../services/AuthService";
+import { UserRole } from "../types/domain";
 
 const authService = new AuthService();
 

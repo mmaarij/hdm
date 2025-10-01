@@ -1,20 +1,20 @@
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { v4 as uuidv4 } from "uuid";
-import { config } from "../config/env.js";
-import { UserRepository } from "../repositories/UserRepository.js";
-import type { User } from "../types/domain.js";
-import { UserRole } from "../types/domain.js";
+import { config } from "../config/env";
+import { UserRepository } from "../repositories/UserRepository";
+import type { User } from "../types/domain";
+import { UserRole } from "../types/domain";
 import type {
   RegisterRequest,
   LoginRequest,
   LoginResponse,
-} from "../types/dto.js";
+} from "../types/dto";
 import {
   createUserId,
   createEmail,
   createHashedPassword,
-} from "../types/branded.js";
+} from "../types/branded";
 
 export class AuthService {
   private userRepository: UserRepository;

@@ -1,9 +1,9 @@
 import { eq, and } from "drizzle-orm";
-import { db } from "../models/database.js";
-import { documentPermissions } from "../models/schema.js";
-import type { IDocumentPermissionRepository } from "../types/repositories.js";
-import type { DocumentPermission } from "../types/domain.js";
-import { Permission } from "../types/domain.js";
+import { db } from "../models/database";
+import { documentPermissions } from "../models/schema";
+import type { IDocumentPermissionRepository } from "../types/repositories";
+import type { DocumentPermission } from "../types/domain";
+import { Permission } from "../types/domain";
 import {
   type DocumentId,
   type UserId,
