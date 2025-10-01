@@ -3,10 +3,8 @@ import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { AuthController } from "./controllers/AuthController";
 import { DocumentController } from "./controllers/DocumentController";
-import {
-  MetadataController,
-  PermissionController,
-} from "./controllers/MetadataPermissionController";
+import { MetadataController } from "./controllers/MetadataController";
+import { PermissionController } from "./controllers/PermissionController";
 import { DownloadLinkController } from "./controllers/DownloadLinkController";
 import { authenticate, requireAdmin } from "./middleware/auth";
 
