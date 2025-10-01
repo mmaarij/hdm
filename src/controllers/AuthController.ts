@@ -20,17 +20,16 @@ export class AuthController {
       // Register user
       const user = await this.authService.register(validatedData);
 
-      // Don't return password in response
-      const { password, ...userResponse } = user;
+      const { password, ...userWithoutPassword } = user;
 
       return c.json(
         {
           success: true,
           message: "User registered successfully",
           data: {
-            ...userResponse,
-            id: userResponse.id as string,
-            email: userResponse.email as string,
+            ...userWithoutPassword,
+            id: userWithoutPassword.id as string,
+            email: userWithoutPassword.email as string,
           },
         },
         201
@@ -123,20 +122,15 @@ export class AuthController {
 
   me = async (c: Context) => {
     try {
-      const user = c.get("user");
-
-      if (!user) {
+      const currentUser = c.get("user");
+      if (!currentUser) {
         return c.json(
-          {
-            success: false,
-            error: "User not found",
-          },
+          { success: false, error: "Authentication required" },
           401
         );
       }
 
-      // Get full user details
-      const fullUser = await this.authService.getUserById(user.userId);
+      const fullUser = await this.authService.getUserById(currentUser.userId);
 
       if (!fullUser) {
         return c.json(
@@ -148,7 +142,6 @@ export class AuthController {
         );
       }
 
-      // Don't return password
       const { password, ...userResponse } = fullUser;
 
       return c.json({

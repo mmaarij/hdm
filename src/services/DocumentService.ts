@@ -1,5 +1,5 @@
 import { promises as fs } from "fs";
-import { join, extname } from "path";
+import { join, extname, dirname } from "path";
 import { v4 as uuidv4 } from "uuid";
 import { config } from "../config/env.js";
 import {
@@ -56,26 +56,21 @@ export class DocumentService {
     uploadData: DocumentUploadRequest,
     uploadedBy: string
   ): Promise<Document> {
-    // Validate file size
     if (file.size > parseInt(config.UPLOAD_MAX_SIZE)) {
       throw new Error(
         `File size exceeds maximum allowed size of ${config.UPLOAD_MAX_SIZE} bytes`
       );
     }
 
-    // Generate unique filename
     const fileExtension = extname(file.filename);
     const uniqueFilename = `${uuidv4()}${fileExtension}`;
     const filePath = join(config.UPLOAD_DIR, uniqueFilename);
 
     try {
-      // Ensure upload directory exists
-      await fs.mkdir(config.UPLOAD_DIR, { recursive: true });
+      await fs.mkdir(dirname(filePath), { recursive: true });
 
-      // Save file to disk
       await fs.writeFile(filePath, new Uint8Array(file.data));
 
-      // Create document record
       const document = await this.documentRepository.create({
         id: createDocumentId(uuidv4()),
         filename: createFileName(uniqueFilename),

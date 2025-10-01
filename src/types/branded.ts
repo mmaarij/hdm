@@ -1,12 +1,7 @@
-// Branded types to eliminate primitive obsession
 declare const __brand: unique symbol;
 
-/**
- * Base branded type that makes a primitive type unique at compile time
- */
 export type Branded<T, Brand> = T & { readonly [__brand]: Brand };
 
-// === ID Types ===
 export type UserId = Branded<string, "UserId">;
 export type DocumentId = Branded<string, "DocumentId">;
 export type MetadataId = Branded<string, "MetadataId">;
@@ -14,19 +9,16 @@ export type PermissionId = Branded<string, "PermissionId">;
 export type TagId = Branded<string, "TagId">;
 export type TokenId = Branded<string, "TokenId">;
 
-// === Security Types ===
 export type Email = Branded<string, "Email">;
 export type HashedPassword = Branded<string, "HashedPassword">;
 export type JwtToken = Branded<string, "JwtToken">;
 export type DownloadToken = Branded<string, "DownloadToken">;
 
-// === File System Types ===
 export type FilePath = Branded<string, "FilePath">;
 export type FileName = Branded<string, "FileName">;
 export type MimeType = Branded<string, "MimeType">;
 export type FileSize = Branded<number, "FileSize">;
 
-// === Validation Helpers ===
 function isValidUUID(value: string): boolean {
   const uuidRegex =
     /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -39,8 +31,6 @@ function isValidEmail(value: string): boolean {
 }
 
 function isValidMimeType(value: string): boolean {
-  // Accept MIME types with optional parameters (e.g., "text/plain;charset=utf-8")
-  // Split on semicolon and validate just the main MIME type part
   const parts = value.split(";");
   const mainType = parts[0]?.trim();
   if (!mainType) return false;
@@ -49,7 +39,6 @@ function isValidMimeType(value: string): boolean {
   return mimeTypeRegex.test(mainType);
 }
 
-// === Safe Branded Type Creators ===
 export const createUserId = (value: string): UserId => {
   if (!isValidUUID(value)) {
     throw new Error(`Invalid UUID format for UserId: ${value}`);

@@ -23,7 +23,6 @@ const metadataController = new MetadataController();
 const permissionController = new PermissionController();
 const downloadLinkController = new DownloadLinkController();
 
-// Health check endpoint
 app.get("/health", (c) => {
   return c.json({ status: "ok", timestamp: new Date().toISOString() });
 });

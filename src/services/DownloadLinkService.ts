@@ -33,10 +33,8 @@ export class DownloadLinkService {
       throw new Error("Document not found");
     }
 
-    // Generate secure token
     const tokenString = crypto.randomBytes(32).toString("hex");
 
-    // Calculate expiration time
     const expiresIn = config.DOWNLOAD_LINK_EXPIRES_IN;
     const expiresAt = this.parseExpirationTime(expiresIn);
 

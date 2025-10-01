@@ -5,7 +5,6 @@ import type {
   User,
 } from "../types/domain.js";
 
-// Helper function to convert branded types to strings for API responses
 export function convertDocumentForResponse(document: Document) {
   return {
     ...document,

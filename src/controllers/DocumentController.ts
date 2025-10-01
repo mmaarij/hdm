@@ -21,7 +21,6 @@ export class DocumentController {
         );
       }
 
-      // Parse multipart form data
       const { files, fields } = await parseMultipartFormData(c.req.raw);
 
       if (files.length === 0) {
@@ -40,13 +39,11 @@ export class DocumentController {
         return c.json({ success: false, error: "No valid file found" }, 400);
       }
 
-      // Parse metadata and tags from form fields
       const metadata = fields.metadata ? JSON.parse(fields.metadata) : {};
       const tags = fields.tags ? JSON.parse(fields.tags) : [];
 
       const uploadData = { file, metadata, tags };
 
-      // Upload document
       const document = await this.documentService.uploadDocument(
         file,
         uploadData,
@@ -188,7 +185,6 @@ export class DocumentController {
 
       const query = c.req.query();
 
-      // Validate search parameters
       const searchOptions = DocumentSearchSchema.parse(query);
 
       // Scope search based on user role
@@ -261,10 +257,8 @@ export class DocumentController {
         );
       }
 
-      // Get file data
       const fileData = await this.documentService.getFileData(document);
 
-      // Set appropriate headers
       c.header("Content-Type", document.mimeType);
       c.header("Content-Length", document.size.toString());
       c.header(
@@ -313,7 +307,6 @@ export class DocumentController {
         );
       }
 
-      // Check if user owns the document (or is admin)
       if (document.uploadedBy !== user.userId && user.role !== "admin") {
         return c.json(
           {

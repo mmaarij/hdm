@@ -49,14 +49,11 @@ export class DocumentMetadataRepository implements IDocumentMetadataRepository {
 
   async delete(id: MetadataId): Promise<boolean> {
     try {
-      // Get the metadata first to check if it exists
-      const existingMetadata = await db
-        .select()
-        .from(documentMetadata)
-        .where(eq(documentMetadata.id, id as string))
-        .limit(1);
+      const existing = await db.query.documentMetadata.findFirst({
+        where: eq(documentMetadata.id, id as string),
+      });
 
-      if (existingMetadata.length === 0) {
+      if (!existing) {
         return false;
       }
 
@@ -72,13 +69,12 @@ export class DocumentMetadataRepository implements IDocumentMetadataRepository {
 
   async deleteByDocumentId(documentId: DocumentId): Promise<number> {
     try {
-      // Get count of metadata items before deletion
-      const existingMetadata = await db
+      const result = await db
         .select()
         .from(documentMetadata)
         .where(eq(documentMetadata.documentId, documentId as string));
 
-      const count = existingMetadata.length;
+      const count = result.length;
 
       await db
         .delete(documentMetadata)

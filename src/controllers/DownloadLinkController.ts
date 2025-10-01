@@ -23,7 +23,6 @@ export class DownloadLinkController {
 
       const documentId = c.req.param("documentId");
 
-      // Check if document exists and user has access
       const document = await this.documentService.getDocument(documentId);
       if (!document) {
         return c.json(
@@ -35,13 +34,11 @@ export class DownloadLinkController {
         );
       }
 
-      // Generate download token
       const token = await this.downloadLinkService.generateDownloadLink(
         documentId,
         user.userId
       );
 
-      // Create download URL
       const downloadUrl = `/api/v1/download/${token}`;
 
       return c.json({
@@ -50,7 +47,7 @@ export class DownloadLinkController {
         data: {
           downloadUrl,
           token,
-          expiresIn: "1h", // TODO: Make this configurable
+          expiresIn: "1h",
         },
       });
     } catch (error) {
@@ -94,10 +91,8 @@ export class DownloadLinkController {
         );
       }
 
-      // Get file data
       const fileData = await this.documentService.getFileData(document);
 
-      // Return file with appropriate headers
       return new Response(fileData, {
         headers: {
           "Content-Type": document.mimeType,

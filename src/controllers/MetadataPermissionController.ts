@@ -31,10 +31,8 @@ export class MetadataController {
       const documentId = c.req.param("documentId");
       const body = await c.req.json();
 
-      // Validate input
       const validatedData = DocumentMetadataCreateSchema.parse(body);
 
-      // Create metadata
       const metadata = await this.metadataService.createMetadata(
         documentId,
         validatedData
@@ -114,10 +112,8 @@ export class MetadataController {
       const metadataId = c.req.param("metadataId");
       const body = await c.req.json();
 
-      // Validate input
       const validatedData = DocumentMetadataUpdateSchema.parse(body);
 
-      // Update metadata
       const metadata = await this.metadataService.updateMetadata(
         metadataId,
         validatedData

@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-// Environment configuration schema
 const configSchema = z.object({
   PORT: z.string().default("3000"),
   NODE_ENV: z
@@ -21,7 +20,6 @@ const configSchema = z.object({
   UPLOAD_MAX_SIZE: z.string().default("10485760"), // 10MB
   UPLOAD_DIR: z.string().default("./uploads"),
 
-  // Download Links
   DOWNLOAD_LINK_EXPIRES_IN: z.string().default("1h"),
 });
 
@@ -30,7 +28,7 @@ function loadConfig() {
   try {
     return configSchema.parse(process.env);
   } catch (error) {
-    console.error("❌ Invalid environment configuration:", error);
+    console.error("Invalid environment configuration:", error);
     process.exit(1);
   }
 }

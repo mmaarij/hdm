@@ -20,8 +20,8 @@ export const users = sqliteTable("users", {
 // Documents table
 export const documents = sqliteTable("documents", {
   id: text("id").primaryKey(), // UUID
-  filename: text("filename").notNull(), // Generated unique filename
-  originalName: text("original_name").notNull(), // User uploaded filename
+  filename: text("filename").notNull(),
+  originalName: text("original_name").notNull(),
   mimeType: text("mime_type").notNull(),
   size: integer("size").notNull(), // File size in bytes
   path: text("path").notNull(), // Storage path

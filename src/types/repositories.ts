@@ -16,7 +16,6 @@ import type {
   DownloadToken,
 } from "../types/branded.js";
 
-// Common pagination options
 export interface PaginationOptions {
   page: number;
   limit: number;
@@ -120,5 +119,5 @@ export interface IDownloadTokenRepository {
     usedAt?: Date;
   } | null>;
   markAsUsed(id: TokenId): Promise<boolean>;
-  cleanup(): Promise<number>; // Remove expired tokens
+  cleanup(): Promise<number>;
 }

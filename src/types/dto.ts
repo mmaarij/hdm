@@ -30,7 +30,7 @@ export const LoginResponseSchema = z.object({
 
 // Document DTOs
 export const DocumentUploadSchema = z.object({
-  file: z.any(), // Will be handled by multipart middleware
+  file: z.any(),
   metadata: z.record(z.string(), z.string()).optional().default({}),
   tags: z.array(z.string()).optional().default([]),
 });
@@ -78,7 +78,6 @@ export const DocumentTagCreateSchema = z.object({
   tag: z.string().min(1).max(100).toLowerCase(),
 });
 
-// Generic pagination schema
 export const PaginationSchema = z.object({
   page: z.coerce.number().min(1).default(1),
   limit: z.coerce.number().min(1).max(100).default(20),

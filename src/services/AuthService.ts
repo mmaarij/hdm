@@ -57,7 +57,6 @@ export class AuthService {
       throw new Error("Invalid credentials");
     }
 
-    // Generate JWT token
     const token = jwt.sign(
       {
         userId: user.id,

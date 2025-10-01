@@ -1,4 +1,3 @@
-// Core domain entities with branded types
 import type {
   UserId,
   DocumentId,
@@ -72,7 +71,6 @@ export interface DocumentTag {
   createdAt: Date;
 }
 
-// API Response types
 export interface PaginatedResponse<T> {
   data: T[];
   pagination: {
