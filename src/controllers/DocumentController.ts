@@ -2,8 +2,14 @@ import type { Context } from "hono";
 import { DocumentService } from "../services/DocumentService.js";
 import { DocumentSearchSchema } from "../types/dto.js";
 import { parseMultipartFormData } from "../utils/fileUpload.js";
-import { ZodError } from "zod";
 import { UserRole } from "../types/domain.js";
+import {
+  handleControllerError,
+  convertDocumentForResponse,
+  createSuccessResponse,
+  createSuccessResponseWithoutData,
+  requireAuthenticatedUser,
+} from "../utils/responseHelpers.js";
 
 export class DocumentController {
   private documentService: DocumentService;
@@ -14,14 +20,10 @@ export class DocumentController {
 
   upload = async (c: Context) => {
     try {
-      const user = c.get("user");
-      if (!user) {
-        return c.json(
-          { success: false, error: "Authentication required" },
-          401
-        );
-      }
+      const authError = requireAuthenticatedUser(c);
+      if (authError) return authError;
 
+      const user = c.get("user");
       const { files, fields } = await parseMultipartFormData(c.req.raw);
 
       if (files.length === 0) {
@@ -42,7 +44,6 @@ export class DocumentController {
 
       const metadata = fields.metadata ? JSON.parse(fields.metadata) : {};
       const tags = fields.tags ? JSON.parse(fields.tags) : [];
-
       const uploadData = { file, metadata, tags };
 
       const document = await this.documentService.uploadDocument(
@@ -52,40 +53,14 @@ export class DocumentController {
       );
 
       return c.json(
-        {
-          success: true,
-          message: "Document uploaded successfully",
-          data: {
-            ...document,
-            id: document.id as string,
-            filename: document.filename as string,
-            originalName: document.originalName as string,
-            mimeType: document.mimeType as string,
-            size: document.size as number,
-            path: document.path as string,
-            uploadedBy: document.uploadedBy as string,
-          },
-        },
+        createSuccessResponse(
+          convertDocumentForResponse(document),
+          "Document uploaded successfully"
+        ),
         201
       );
     } catch (error) {
-      if (error instanceof Error) {
-        return c.json(
-          {
-            success: false,
-            error: error.message,
-          },
-          400
-        );
-      }
-
-      return c.json(
-        {
-          success: false,
-          error: "Internal server error",
-        },
-        500
-      );
+      return handleControllerError(c, error);
     }
   };
 
@@ -104,9 +79,8 @@ export class DocumentController {
         );
       }
 
-      return c.json({
-        success: true,
-        data: {
+      return c.json(
+        createSuccessResponse({
           ...document,
           id: document.id as string,
           filename: document.filename as string,
@@ -115,29 +89,19 @@ export class DocumentController {
           size: document.size as number,
           path: document.path as string,
           uploadedBy: document.uploadedBy as string,
-        },
-      });
-    } catch (error) {
-      return c.json(
-        {
-          success: false,
-          error: "Internal server error",
-        },
-        500
+        })
       );
+    } catch (error) {
+      return handleControllerError(c, error);
     }
   };
 
   getUserDocuments = async (c: Context) => {
     try {
-      const user = c.get("user");
-      if (!user) {
-        return c.json(
-          { success: false, error: "Authentication required" },
-          401
-        );
-      }
+      const authError = requireAuthenticatedUser(c);
+      if (authError) return authError;
 
+      const user = c.get("user");
       const page = parseInt(c.req.query("page") || "1");
       const limit = parseInt(c.req.query("limit") || "20");
 
@@ -147,54 +111,31 @@ export class DocumentController {
         limit
       );
 
-      return c.json({
-        success: true,
-        data: {
-          ...result,
-          data: result.data.map((doc) => ({
-            ...doc,
-            id: doc.id as string,
-            filename: doc.filename as string,
-            originalName: doc.originalName as string,
-            mimeType: doc.mimeType as string,
-            size: doc.size as number,
-            path: doc.path as string,
-            uploadedBy: doc.uploadedBy as string,
-          })),
-        },
-      });
-    } catch (error) {
       return c.json(
-        {
-          success: false,
-          error: "Internal server error",
-        },
-        500
+        createSuccessResponse({
+          ...result,
+          data: result.data.map(convertDocumentForResponse),
+        })
       );
+    } catch (error) {
+      return handleControllerError(c, error);
     }
   };
 
   searchDocuments = async (c: Context) => {
     try {
+      const authError = requireAuthenticatedUser(c);
+      if (authError) return authError;
+
       const user = c.get("user");
-      if (!user) {
-        return c.json(
-          { success: false, error: "Authentication required" },
-          401
-        );
-      }
-
       const query = c.req.query();
-
       const searchOptions = DocumentSearchSchema.parse(query);
 
       // Scope search based on user role
       let userSearchOptions;
       if (user.role === UserRole.ADMIN) {
-        // Admins can search all documents
         userSearchOptions = searchOptions;
       } else {
-        // Regular users can only search their own documents
         userSearchOptions = {
           ...searchOptions,
           uploadedBy: user.userId,
@@ -205,41 +146,14 @@ export class DocumentController {
         userSearchOptions
       );
 
-      return c.json({
-        success: true,
-        data: {
-          ...result,
-          data: result.data.map((doc) => ({
-            ...doc,
-            id: doc.id as string,
-            filename: doc.filename as string,
-            originalName: doc.originalName as string,
-            mimeType: doc.mimeType as string,
-            size: doc.size as number,
-            path: doc.path as string,
-            uploadedBy: doc.uploadedBy as string,
-          })),
-        },
-      });
-    } catch (error) {
-      if (error instanceof ZodError) {
-        return c.json(
-          {
-            success: false,
-            error: "Invalid search parameters",
-            details: error.issues,
-          },
-          400
-        );
-      }
-
       return c.json(
-        {
-          success: false,
-          error: "Internal server error",
-        },
-        500
+        createSuccessResponse({
+          ...result,
+          data: result.data.map(convertDocumentForResponse),
+        })
       );
+    } catch (error) {
+      return handleControllerError(c, error);
     }
   };
 
@@ -260,41 +174,24 @@ export class DocumentController {
 
       const fileData = await this.documentService.getFileData(document);
 
-      c.header("Content-Type", document.mimeType);
-      c.header("Content-Length", document.size.toString());
-      c.header(
-        "Content-Disposition",
-        `attachment; filename="${document.originalName}"`
-      );
-
       return new Response(fileData, {
         headers: {
-          "Content-Type": document.mimeType,
+          "Content-Type": document.mimeType as string,
           "Content-Length": document.size.toString(),
           "Content-Disposition": `attachment; filename="${document.originalName}"`,
         },
       });
     } catch (error) {
-      return c.json(
-        {
-          success: false,
-          error: "Internal server error",
-        },
-        500
-      );
+      return handleControllerError(c, error);
     }
   };
 
   deleteDocument = async (c: Context) => {
     try {
-      const user = c.get("user");
-      if (!user) {
-        return c.json(
-          { success: false, error: "Authentication required" },
-          401
-        );
-      }
+      const authError = requireAuthenticatedUser(c);
+      if (authError) return authError;
 
+      const user = c.get("user");
       const id = c.req.param("id");
       const document = await this.documentService.getDocument(id);
 
@@ -330,18 +227,11 @@ export class DocumentController {
         );
       }
 
-      return c.json({
-        success: true,
-        message: "Document deleted successfully",
-      });
-    } catch (error) {
       return c.json(
-        {
-          success: false,
-          error: "Internal server error",
-        },
-        500
+        createSuccessResponseWithoutData("Document deleted successfully")
       );
+    } catch (error) {
+      return handleControllerError(c, error);
     }
   };
 }

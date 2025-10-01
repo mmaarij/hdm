@@ -1,3 +1,5 @@
+import type { Context } from "hono";
+import { ZodError } from "zod";
 import type {
   DocumentMetadata,
   DocumentPermission,
@@ -5,6 +7,7 @@ import type {
   User,
 } from "../types/domain.js";
 
+// Response conversion functions
 export function convertDocumentForResponse(document: Document) {
   return {
     ...document,
@@ -19,11 +22,11 @@ export function convertDocumentForResponse(document: Document) {
 }
 
 export function convertUserForResponse(user: User) {
+  const { password, ...userWithoutPassword } = user;
   return {
-    ...user,
-    id: user.id as string,
-    email: user.email as string,
-    password: user.password as string,
+    ...userWithoutPassword,
+    id: userWithoutPassword.id as string,
+    email: userWithoutPassword.email as string,
   };
 }
 
@@ -41,5 +44,71 @@ export function convertPermissionForResponse(permission: DocumentPermission) {
     id: permission.id as string,
     documentId: permission.documentId as string,
     userId: permission.userId as string,
+  };
+}
+
+// Error handling utilities
+export function handleControllerError(
+  c: Context,
+  error: unknown,
+  defaultStatusCode: number = 500
+) {
+  if (error instanceof ZodError) {
+    return c.json(
+      {
+        success: false,
+        error: "Validation error",
+        details: error.issues,
+      },
+      400
+    );
+  }
+
+  if (error instanceof Error) {
+    const statusCode = defaultStatusCode === 500 ? 400 : defaultStatusCode;
+    return c.json(
+      {
+        success: false,
+        error: error.message,
+      },
+      statusCode as any
+    );
+  }
+
+  return c.json(
+    {
+      success: false,
+      error: "Internal server error",
+    },
+    500
+  );
+}
+
+// Authentication utilities
+export function requireAuthenticatedUser(c: Context) {
+  const user = c.get("user");
+  if (!user) {
+    return c.json({ success: false, error: "Authentication required" }, 401);
+  }
+  return null; // No error, proceed
+}
+
+// Success response utilities
+export function createSuccessResponse(
+  data: any,
+  message?: string,
+  statusCode: number = 200
+) {
+  return {
+    success: true,
+    ...(message && { message }),
+    data,
+  };
+}
+
+export function createSuccessResponseWithoutData(message: string) {
+  return {
+    success: true,
+    message,
   };
 }

@@ -9,7 +9,14 @@ import {
   DocumentPermissionCreateSchema,
   DocumentPermissionUpdateSchema,
 } from "../types/dto.js";
-import { ZodError } from "zod";
+import {
+  handleControllerError,
+  convertMetadataForResponse,
+  convertPermissionForResponse,
+  createSuccessResponse,
+  createSuccessResponseWithoutData,
+  requireAuthenticatedUser,
+} from "../utils/responseHelpers.js";
 
 export class MetadataController {
   private metadataService: DocumentMetadataService;
@@ -20,17 +27,11 @@ export class MetadataController {
 
   createMetadata = async (c: Context) => {
     try {
-      const user = c.get("user");
-      if (!user) {
-        return c.json(
-          { success: false, error: "Authentication required" },
-          401
-        );
-      }
+      const authError = requireAuthenticatedUser(c);
+      if (authError) return authError;
 
       const documentId = c.req.param("documentId");
       const body = await c.req.json();
-
       const validatedData = DocumentMetadataCreateSchema.parse(body);
 
       const metadata = await this.metadataService.createMetadata(
@@ -39,37 +40,14 @@ export class MetadataController {
       );
 
       return c.json(
-        {
-          success: true,
-          message: "Metadata created successfully",
-          data: {
-            ...metadata,
-            id: metadata.id as string,
-            documentId: metadata.documentId as string,
-          },
-        },
+        createSuccessResponse(
+          convertMetadataForResponse(metadata),
+          "Metadata created successfully"
+        ),
         201
       );
     } catch (error) {
-      if (error instanceof ZodError) {
-        return c.json(
-          {
-            success: false,
-            error: "Validation error",
-            details: error.issues,
-          },
-          400
-        );
-      }
-
-      return c.json(
-        {
-          success: false,
-          error:
-            error instanceof Error ? error.message : "Internal server error",
-        },
-        500
-      );
+      return handleControllerError(c, error);
     }
   };
 
@@ -80,38 +58,21 @@ export class MetadataController {
         documentId
       );
 
-      return c.json({
-        success: true,
-        data: metadata.map((m) => ({
-          ...m,
-          id: m.id as string,
-          documentId: m.documentId as string,
-        })),
-      });
-    } catch (error) {
       return c.json(
-        {
-          success: false,
-          error: "Internal server error",
-        },
-        500
+        createSuccessResponse(metadata.map(convertMetadataForResponse))
       );
+    } catch (error) {
+      return handleControllerError(c, error);
     }
   };
 
   updateMetadata = async (c: Context) => {
     try {
-      const user = c.get("user");
-      if (!user) {
-        return c.json(
-          { success: false, error: "Authentication required" },
-          401
-        );
-      }
+      const authError = requireAuthenticatedUser(c);
+      if (authError) return authError;
 
       const metadataId = c.req.param("metadataId");
       const body = await c.req.json();
-
       const validatedData = DocumentMetadataUpdateSchema.parse(body);
 
       const metadata = await this.metadataService.updateMetadata(
@@ -129,46 +90,21 @@ export class MetadataController {
         );
       }
 
-      return c.json({
-        success: true,
-        message: "Metadata updated successfully",
-        data: {
-          ...metadata,
-          id: metadata.id as string,
-          documentId: metadata.documentId as string,
-        },
-      });
-    } catch (error) {
-      if (error instanceof ZodError) {
-        return c.json(
-          {
-            success: false,
-            error: "Validation error",
-            details: error.issues,
-          },
-          400
-        );
-      }
-
       return c.json(
-        {
-          success: false,
-          error: "Internal server error",
-        },
-        500
+        createSuccessResponse(
+          convertMetadataForResponse(metadata),
+          "Metadata updated successfully"
+        )
       );
+    } catch (error) {
+      return handleControllerError(c, error);
     }
   };
 
   deleteMetadata = async (c: Context) => {
     try {
-      const user = c.get("user");
-      if (!user) {
-        return c.json(
-          { success: false, error: "Authentication required" },
-          401
-        );
-      }
+      const authError = requireAuthenticatedUser(c);
+      if (authError) return authError;
 
       const metadataId = c.req.param("metadataId");
       const deleted = await this.metadataService.deleteMetadata(metadataId);
@@ -183,18 +119,11 @@ export class MetadataController {
         );
       }
 
-      return c.json({
-        success: true,
-        message: "Metadata deleted successfully",
-      });
-    } catch (error) {
       return c.json(
-        {
-          success: false,
-          error: "Internal server error",
-        },
-        500
+        createSuccessResponseWithoutData("Metadata deleted successfully")
       );
+    } catch (error) {
+      return handleControllerError(c, error);
     }
   };
 }
@@ -208,21 +137,14 @@ export class PermissionController {
 
   grantPermission = async (c: Context) => {
     try {
-      const user = c.get("user");
-      if (!user) {
-        return c.json(
-          { success: false, error: "Authentication required" },
-          401
-        );
-      }
+      const authError = requireAuthenticatedUser(c);
+      if (authError) return authError;
 
+      const user = c.get("user");
       const documentId = c.req.param("documentId");
       const body = await c.req.json();
-
-      // Validate input
       const validatedData = DocumentPermissionCreateSchema.parse(body);
 
-      // Grant permission
       const permission = await this.permissionService.grantPermission(
         documentId,
         validatedData,
@@ -230,38 +152,14 @@ export class PermissionController {
       );
 
       return c.json(
-        {
-          success: true,
-          message: "Permission granted successfully",
-          data: {
-            ...permission,
-            id: permission.id as string,
-            documentId: permission.documentId as string,
-            userId: permission.userId as string,
-          },
-        },
+        createSuccessResponse(
+          convertPermissionForResponse(permission),
+          "Permission granted successfully"
+        ),
         201
       );
     } catch (error) {
-      if (error instanceof ZodError) {
-        return c.json(
-          {
-            success: false,
-            error: "Validation error",
-            details: error.issues,
-          },
-          400
-        );
-      }
-
-      return c.json(
-        {
-          success: false,
-          error:
-            error instanceof Error ? error.message : "Internal server error",
-        },
-        400
-      );
+      return handleControllerError(c, error);
     }
   };
 
@@ -272,67 +170,37 @@ export class PermissionController {
         documentId
       );
 
-      return c.json({
-        success: true,
-        data: permissions,
-      });
+      return c.json(createSuccessResponse(permissions));
     } catch (error) {
-      return c.json(
-        {
-          success: false,
-          error: "Internal server error",
-        },
-        500
-      );
+      return handleControllerError(c, error);
     }
   };
 
   getUserPermissions = async (c: Context) => {
     try {
-      const user = c.get("user");
-      if (!user) {
-        return c.json(
-          { success: false, error: "Authentication required" },
-          401
-        );
-      }
+      const authError = requireAuthenticatedUser(c);
+      if (authError) return authError;
 
+      const user = c.get("user");
       const permissions = await this.permissionService.getUserPermissions(
         user.userId
       );
 
-      return c.json({
-        success: true,
-        data: permissions,
-      });
+      return c.json(createSuccessResponse(permissions));
     } catch (error) {
-      return c.json(
-        {
-          success: false,
-          error: "Internal server error",
-        },
-        500
-      );
+      return handleControllerError(c, error);
     }
   };
 
   updatePermission = async (c: Context) => {
     try {
-      const user = c.get("user");
-      if (!user) {
-        return c.json(
-          { success: false, error: "Authentication required" },
-          401
-        );
-      }
+      const authError = requireAuthenticatedUser(c);
+      if (authError) return authError;
 
       const permissionId = c.req.param("permissionId");
       const body = await c.req.json();
-
-      // Validate input
       const validatedData = DocumentPermissionUpdateSchema.parse(body);
 
-      // Update permission
       const permission = await this.permissionService.updatePermission(
         permissionId,
         validatedData
@@ -348,47 +216,21 @@ export class PermissionController {
         );
       }
 
-      return c.json({
-        success: true,
-        message: "Permission updated successfully",
-        data: {
-          ...permission,
-          id: permission.id as string,
-          documentId: permission.documentId as string,
-          userId: permission.userId as string,
-        },
-      });
-    } catch (error) {
-      if (error instanceof ZodError) {
-        return c.json(
-          {
-            success: false,
-            error: "Validation error",
-            details: error.issues,
-          },
-          400
-        );
-      }
-
       return c.json(
-        {
-          success: false,
-          error: "Internal server error",
-        },
-        500
+        createSuccessResponse(
+          convertPermissionForResponse(permission),
+          "Permission updated successfully"
+        )
       );
+    } catch (error) {
+      return handleControllerError(c, error);
     }
   };
 
   revokePermission = async (c: Context) => {
     try {
-      const user = c.get("user");
-      if (!user) {
-        return c.json(
-          { success: false, error: "Authentication required" },
-          401
-        );
-      }
+      const authError = requireAuthenticatedUser(c);
+      if (authError) return authError;
 
       const permissionId = c.req.param("permissionId");
       const revoked = await this.permissionService.revokePermission(
@@ -405,18 +247,11 @@ export class PermissionController {
         );
       }
 
-      return c.json({
-        success: true,
-        message: "Permission revoked successfully",
-      });
-    } catch (error) {
       return c.json(
-        {
-          success: false,
-          error: "Internal server error",
-        },
-        500
+        createSuccessResponseWithoutData("Permission revoked successfully")
       );
+    } catch (error) {
+      return handleControllerError(c, error);
     }
   };
 }

@@ -2,6 +2,12 @@ import type { Context } from "hono";
 import { DownloadLinkService } from "../services/DownloadLinkService.js";
 import { DocumentService } from "../services/DocumentService.js";
 import { UserRole } from "../types/domain.js";
+import {
+  handleControllerError,
+  createSuccessResponse,
+  createSuccessResponseWithoutData,
+  requireAuthenticatedUser,
+} from "../utils/responseHelpers.js";
 
 export class DownloadLinkController {
   private downloadLinkService: DownloadLinkService;
@@ -14,14 +20,10 @@ export class DownloadLinkController {
 
   generateDownloadLink = async (c: Context) => {
     try {
-      const user = c.get("user");
-      if (!user) {
-        return c.json(
-          { success: false, error: "Authentication required" },
-          401
-        );
-      }
+      const authError = requireAuthenticatedUser(c);
+      if (authError) return authError;
 
+      const user = c.get("user");
       const documentId = c.req.param("documentId");
 
       const document = await this.documentService.getDocument(documentId);
@@ -42,32 +44,24 @@ export class DownloadLinkController {
 
       const downloadUrl = `/api/v1/download/${token}`;
 
-      return c.json({
-        success: true,
-        message: "Download link generated successfully",
-        data: {
-          downloadUrl,
-          token,
-          expiresIn: "1h",
-        },
-      });
-    } catch (error) {
       return c.json(
-        {
-          success: false,
-          error:
-            error instanceof Error ? error.message : "Internal server error",
-        },
-        500
+        createSuccessResponse(
+          {
+            downloadUrl,
+            token,
+            expiresIn: "1h",
+          },
+          "Download link generated successfully"
+        )
       );
+    } catch (error) {
+      return handleControllerError(c, error);
     }
   };
 
   downloadWithToken = async (c: Context) => {
     try {
       const token = c.req.param("token");
-
-      // Validate and use token
       const documentId = await this.downloadLinkService.useDownloadToken(token);
 
       if (!documentId) {
@@ -80,7 +74,6 @@ export class DownloadLinkController {
         );
       }
 
-      // Get document
       const document = await this.documentService.getDocument(documentId);
       if (!document) {
         return c.json(
@@ -96,19 +89,13 @@ export class DownloadLinkController {
 
       return new Response(fileData, {
         headers: {
-          "Content-Type": document.mimeType,
+          "Content-Type": document.mimeType as string,
           "Content-Length": document.size.toString(),
           "Content-Disposition": `attachment; filename="${document.originalName}"`,
         },
       });
     } catch (error) {
-      return c.json(
-        {
-          success: false,
-          error: "Internal server error",
-        },
-        500
-      );
+      return handleControllerError(c, error);
     }
   };
 
@@ -122,18 +109,13 @@ export class DownloadLinkController {
       const cleanedCount =
         await this.downloadLinkService.cleanupExpiredTokens();
 
-      return c.json({
-        success: true,
-        message: `Cleaned up ${cleanedCount} expired tokens`,
-      });
-    } catch (error) {
       return c.json(
-        {
-          success: false,
-          error: "Internal server error",
-        },
-        500
+        createSuccessResponseWithoutData(
+          `Cleaned up ${cleanedCount} expired tokens`
+        )
       );
+    } catch (error) {
+      return handleControllerError(c, error);
     }
   };
 }

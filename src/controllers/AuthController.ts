@@ -1,7 +1,12 @@
 import type { Context } from "hono";
 import { AuthService } from "../services/AuthService.js";
 import { RegisterRequestSchema, LoginRequestSchema } from "../types/dto.js";
-import { ZodError } from "zod";
+import {
+  handleControllerError,
+  convertUserForResponse,
+  createSuccessResponse,
+  requireAuthenticatedUser,
+} from "../utils/responseHelpers.js";
 
 export class AuthController {
   private authService: AuthService;
@@ -13,123 +18,51 @@ export class AuthController {
   register = async (c: Context) => {
     try {
       const body = await c.req.json();
-
-      // Validate input
       const validatedData = RegisterRequestSchema.parse(body);
-
-      // Register user
       const user = await this.authService.register(validatedData);
 
-      const { password, ...userWithoutPassword } = user;
-
       return c.json(
-        {
-          success: true,
-          message: "User registered successfully",
-          data: {
-            ...userWithoutPassword,
-            id: userWithoutPassword.id as string,
-            email: userWithoutPassword.email as string,
-          },
-        },
+        createSuccessResponse(
+          convertUserForResponse(user),
+          "User registered successfully"
+        ),
         201
       );
     } catch (error) {
-      if (error instanceof ZodError) {
-        return c.json(
-          {
-            success: false,
-            error: "Validation error",
-            details: error.issues,
-          },
-          400
-        );
-      }
-
-      if (error instanceof Error) {
-        return c.json(
-          {
-            success: false,
-            error: error.message,
-          },
-          400
-        );
-      }
-
-      return c.json(
-        {
-          success: false,
-          error: "Internal server error",
-        },
-        500
-      );
+      return handleControllerError(c, error);
     }
   };
 
   login = async (c: Context) => {
     try {
       const body = await c.req.json();
-
-      // Validate input
       const validatedData = LoginRequestSchema.parse(body);
-
-      // Login user
       const result = await this.authService.login(validatedData);
 
-      return c.json({
-        success: true,
-        message: "Login successful",
-        data: {
-          ...result,
-          user: {
-            ...result.user,
-            id: result.user.id as string,
-            email: result.user.email as string,
-          },
-        },
-      });
-    } catch (error) {
-      if (error instanceof ZodError) {
-        return c.json(
-          {
-            success: false,
-            error: "Validation error",
-            details: error.issues,
-          },
-          400
-        );
-      }
-
-      if (error instanceof Error) {
-        return c.json(
-          {
-            success: false,
-            error: error.message,
-          },
-          401
-        );
-      }
-
       return c.json(
-        {
-          success: false,
-          error: "Internal server error",
-        },
-        500
+        createSuccessResponse(
+          {
+            ...result,
+            user: {
+              ...result.user,
+              id: result.user.id as string,
+              email: result.user.email as string,
+            },
+          },
+          "Login successful"
+        )
       );
+    } catch (error) {
+      return handleControllerError(c, error, 401);
     }
   };
 
   me = async (c: Context) => {
     try {
-      const currentUser = c.get("user");
-      if (!currentUser) {
-        return c.json(
-          { success: false, error: "Authentication required" },
-          401
-        );
-      }
+      const authError = requireAuthenticatedUser(c);
+      if (authError) return authError;
 
+      const currentUser = c.get("user");
       const fullUser = await this.authService.getUserById(currentUser.userId);
 
       if (!fullUser) {
@@ -142,24 +75,9 @@ export class AuthController {
         );
       }
 
-      const { password, ...userResponse } = fullUser;
-
-      return c.json({
-        success: true,
-        data: {
-          ...userResponse,
-          id: userResponse.id as string,
-          email: userResponse.email as string,
-        },
-      });
+      return c.json(createSuccessResponse(convertUserForResponse(fullUser)));
     } catch (error) {
-      return c.json(
-        {
-          success: false,
-          error: "Internal server error",
-        },
-        500
-      );
+      return handleControllerError(c, error);
     }
   };
 }

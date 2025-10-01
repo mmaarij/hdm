@@ -11,7 +11,6 @@ import {
   createEmail,
   createHashedPassword,
 } from "../types/branded.js";
-import { createHash } from "hono/utils/crypto";
 
 export class UserRepository implements IUserRepository {
   async create(userData: Omit<User, "createdAt" | "updatedAt">): Promise<User> {
