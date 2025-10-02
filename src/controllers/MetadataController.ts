@@ -1,5 +1,5 @@
 import type { Context } from "hono";
-import { DocumentMetadataService } from "../services/MetadataPermissionService";
+import { DocumentMetadataService } from "../services/MetadataService";
 import { StatusCode } from "../types/statusCodes";
 import {
   DocumentMetadataCreateSchema,

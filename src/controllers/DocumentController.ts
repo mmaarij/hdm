@@ -1,6 +1,6 @@
 import type { Context } from "hono";
 import { DocumentService } from "../services/DocumentService";
-import { DocumentPermissionService } from "../services/MetadataPermissionService";
+import { DocumentPermissionService } from "../services/PermissionService";
 import { DocumentSearchSchema } from "../types/dto";
 import { parseMultipartFormData } from "../utils/fileUpload";
 import { UserRole, Permission, type Document } from "../types/domain";
