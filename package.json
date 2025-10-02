@@ -24,6 +24,7 @@
     "bcryptjs": "^3.0.2",
     "drizzle-kit": "^0.31.5",
     "drizzle-orm": "^0.44.5",
+    "effect": "^3.18.1",
     "hono": "^4.9.9",
     "jsonwebtoken": "^9.0.2",
     "uuid": "^13.0.0",

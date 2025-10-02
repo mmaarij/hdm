@@ -1,5 +1,6 @@
 import type { Context } from "hono";
 import { ZodError } from "zod";
+import { Effect } from "effect";
 import { StatusCode } from "../types/statusCodes";
 import type {
   DocumentMetadata,
@@ -54,37 +55,68 @@ export function handleControllerError(
   error: unknown,
   defaultStatusCode: number = StatusCode.INTERNAL_SERVER_ERROR
 ) {
-  if (error instanceof ZodError) {
-    return c.json(
-      {
-        success: false,
-        error: "Validation error",
-        details: error.issues,
-      },
-      StatusCode.BAD_REQUEST as any
-    );
-  }
+  return Effect.runSync(
+    Effect.sync(() => {
+      if (error instanceof ZodError) {
+        return c.json(
+          {
+            success: false,
+            error: "Validation error",
+            details: error.issues,
+          },
+          StatusCode.BAD_REQUEST as any
+        );
+      }
 
-  if (error instanceof Error) {
-    const statusCode =
-      defaultStatusCode === StatusCode.INTERNAL_SERVER_ERROR
-        ? StatusCode.BAD_REQUEST
-        : defaultStatusCode;
-    return c.json(
-      {
-        success: false,
-        error: error.message,
-      },
-      statusCode as any
-    );
-  }
+      if (error instanceof Error) {
+        // Smart error message categorization
+        const message = error.message.toLowerCase();
+        let statusCode = defaultStatusCode;
 
-  return c.json(
-    {
-      success: false,
-      error: "Internal server error",
-    },
-    StatusCode.INTERNAL_SERVER_ERROR as any
+        if (
+          message.includes("not found") ||
+          message.includes("does not exist")
+        ) {
+          statusCode = StatusCode.NOT_FOUND;
+        } else if (
+          message.includes("already exists") ||
+          message.includes("duplicate") ||
+          message.includes("conflict")
+        ) {
+          statusCode = StatusCode.CONFLICT;
+        } else if (
+          message.includes("unauthorized") ||
+          message.includes("invalid credentials") ||
+          message.includes("authentication")
+        ) {
+          statusCode = StatusCode.UNAUTHORIZED;
+        } else if (
+          message.includes("forbidden") ||
+          message.includes("permission") ||
+          message.includes("access denied")
+        ) {
+          statusCode = StatusCode.FORBIDDEN;
+        } else if (statusCode === StatusCode.INTERNAL_SERVER_ERROR) {
+          statusCode = StatusCode.BAD_REQUEST;
+        }
+
+        return c.json(
+          {
+            success: false,
+            error: error.message,
+          },
+          statusCode as any
+        );
+      }
+
+      return c.json(
+        {
+          success: false,
+          error: "Internal server error",
+        },
+        StatusCode.INTERNAL_SERVER_ERROR as any
+      );
+    })
   );
 }
 
@@ -132,5 +164,33 @@ export function createErrorResponse(
       error,
     },
     statusCode as any
+  );
+}
+
+// Optional Effect-enhanced async operation wrapper
+export async function handleAsyncOperation<T>(
+  c: Context,
+  operation: () => Promise<T>,
+  successMessage?: string,
+  successStatusCode: number = StatusCode.OK
+) {
+  return Effect.runPromise(
+    Effect.tryPromise({
+      try: operation,
+      catch: (error) => error,
+    }).pipe(
+      Effect.match({
+        onFailure: (error) => handleControllerError(c, error),
+        onSuccess: (data) => {
+          if (successMessage) {
+            return c.json(
+              createSuccessResponse(data, successMessage),
+              successStatusCode as any
+            );
+          }
+          return c.json(createSuccessResponse(data), successStatusCode as any);
+        },
+      })
+    )
   );
 }

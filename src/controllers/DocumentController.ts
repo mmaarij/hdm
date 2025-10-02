@@ -12,6 +12,7 @@ import {
   createSuccessResponseWithoutData,
   createErrorResponse,
   requireAuthenticatedUser,
+  handleAsyncOperation,
 } from "../utils/responseHelpers";
 
 export class DocumentController {
@@ -24,90 +25,73 @@ export class DocumentController {
   }
 
   upload = async (c: Context) => {
-    try {
-      const authError = requireAuthenticatedUser(c);
-      if (authError) return authError;
+    const authError = requireAuthenticatedUser(c);
+    if (authError) return authError;
 
-      const user = c.get("user");
-      const { files, fields } = await parseMultipartFormData(c.req.raw);
+    const user = c.get("user");
 
-      if (files.length === 0) {
-        return createErrorResponse(
-          c,
-          "No file provided",
-          StatusCode.BAD_REQUEST
+    return handleAsyncOperation(
+      c,
+      async () => {
+        const { files, fields } = await parseMultipartFormData(c.req.raw);
+
+        if (files.length === 0) {
+          throw new Error("No file provided");
+        }
+
+        if (files.length > 1) {
+          throw new Error("Multiple files not supported");
+        }
+
+        const file = files[0];
+        if (!file) {
+          throw new Error("No valid file found");
+        }
+
+        const metadata = fields.metadata ? JSON.parse(fields.metadata) : {};
+        const tags = fields.tags ? JSON.parse(fields.tags) : [];
+        const uploadData = { file, metadata, tags };
+
+        const document = await this.documentService.uploadDocument(
+          file,
+          uploadData,
+          user.userId
         );
-      }
 
-      if (files.length > 1) {
-        return createErrorResponse(
-          c,
-          "Multiple files not supported",
-          StatusCode.BAD_REQUEST
-        );
-      }
-
-      const file = files[0];
-      if (!file) {
-        return createErrorResponse(
-          c,
-          "No valid file found",
-          StatusCode.BAD_REQUEST
-        );
-      }
-
-      const metadata = fields.metadata ? JSON.parse(fields.metadata) : {};
-      const tags = fields.tags ? JSON.parse(fields.tags) : [];
-      const uploadData = { file, metadata, tags };
-
-      const document = await this.documentService.uploadDocument(
-        file,
-        uploadData,
-        user.userId
-      );
-
-      return c.json(
-        createSuccessResponse(
-          convertDocumentForResponse(document),
-          "Document uploaded successfully"
-        ),
-        StatusCode.CREATED as any
-      );
-    } catch (error) {
-      return handleControllerError(c, error);
-    }
+        return convertDocumentForResponse(document);
+      },
+      "Document uploaded successfully",
+      StatusCode.CREATED
+    );
   };
 
   getDocument = async (c: Context) => {
-    try {
-      // Require authentication for document access
-      const authError = requireAuthenticatedUser(c);
-      if (authError) return authError;
+    const authError = requireAuthenticatedUser(c);
+    if (authError) return authError;
 
-      const user = c.get("user");
-      const id = c.req.param("id");
-      const document = await this.documentService.getDocumentWithMetadata(id);
+    const user = c.get("user");
+    const id = c.req.param("id");
 
-      if (!document) {
-        return createErrorResponse(
-          c,
-          "Document not found",
-          StatusCode.NOT_FOUND
+    return handleAsyncOperation(
+      c,
+      async () => {
+        const document = await this.documentService.getDocumentWithMetadata(id);
+
+        if (!document) {
+          throw new Error("Document not found");
+        }
+
+        // Check if user has access to this document
+        const hasAccess = await this.permissionService.checkDocumentAccess(
+          user.userId,
+          user.role,
+          document
         );
-      }
+        if (!hasAccess) {
+          throw new Error("Access denied");
+        }
 
-      // Check if user has access to this document
-      const hasAccess = await this.permissionService.checkDocumentAccess(
-        user.userId,
-        user.role,
-        document
-      );
-      if (!hasAccess) {
-        return createErrorResponse(c, "Access denied", StatusCode.FORBIDDEN);
-      }
-
-      return c.json(
-        createSuccessResponse({
+        return {
           ...document,
           id: document.id as string,
           filename: document.filename as string,
@@ -116,85 +100,85 @@ export class DocumentController {
           size: document.size as number,
           path: document.path as string,
           uploadedBy: document.uploadedBy as string,
-        })
-      );
-    } catch (error) {
-      return handleControllerError(c, error);
-    }
+        };
+      },
+      "Document retrieved successfully"
+    );
   };
 
   getUserDocuments = async (c: Context) => {
-    try {
-      const authError = requireAuthenticatedUser(c);
-      if (authError) return authError;
+    const authError = requireAuthenticatedUser(c);
+    if (authError) return authError;
 
-      const user = c.get("user");
-      const page = parseInt(c.req.query("page") || "1");
-      const limit = parseInt(c.req.query("limit") || "20");
+    const user = c.get("user");
+    const page = parseInt(c.req.query("page") || "1");
+    const limit = parseInt(c.req.query("limit") || "20");
 
-      const result = await this.documentService.getUserDocuments(
-        user.userId,
-        page,
-        limit
-      );
+    return handleAsyncOperation(
+      c,
+      async () => {
+        const result = await this.documentService.getUserDocuments(
+          user.userId,
+          page,
+          limit
+        );
 
-      return c.json(
-        createSuccessResponse({
+        return {
           ...result,
           data: result.data.map(convertDocumentForResponse),
-        })
-      );
-    } catch (error) {
-      return handleControllerError(c, error);
-    }
+        };
+      },
+      "Documents retrieved successfully"
+    );
   };
 
   searchDocuments = async (c: Context) => {
-    try {
-      const authError = requireAuthenticatedUser(c);
-      if (authError) return authError;
+    const authError = requireAuthenticatedUser(c);
+    if (authError) return authError;
 
-      const user = c.get("user");
-      const query = c.req.query();
+    const user = c.get("user");
+    const query = c.req.query();
 
-      // Parse metadata query parameters (e.g., metadata[key]=value)
-      const processedQuery: Record<string, any> = { ...query };
-      const metadata: Record<string, string> = {};
+    return handleAsyncOperation(
+      c,
+      async () => {
+        // Parse metadata query parameters (e.g., metadata[key]=value)
+        const processedQuery: Record<string, any> = { ...query };
+        const metadata: Record<string, string> = {};
 
-      // Extract metadata parameters and convert to proper object format
-      Object.keys(query).forEach((key) => {
-        const metadataMatch = key.match(/^metadata\[(.+)\]$/);
-        if (metadataMatch && metadataMatch[1]) {
-          const metadataKey = metadataMatch[1];
-          const metadataValue = query[key];
-          if (metadataValue && metadataKey) {
-            metadata[metadataKey] = metadataValue;
+        // Extract metadata parameters and convert to proper object format
+        Object.keys(query).forEach((key) => {
+          const metadataMatch = key.match(/^metadata\[(.+)\]$/);
+          if (metadataMatch && metadataMatch[1]) {
+            const metadataKey = metadataMatch[1];
+            const metadataValue = query[key];
+            if (metadataValue && metadataKey) {
+              metadata[metadataKey] = metadataValue;
+            }
+            delete processedQuery[key];
           }
-          delete processedQuery[key];
+        });
+
+        // Add parsed metadata to query if any were found
+        if (Object.keys(metadata).length > 0) {
+          processedQuery.metadata = metadata;
         }
-      });
 
-      // Add parsed metadata to query if any were found
-      if (Object.keys(metadata).length > 0) {
-        processedQuery.metadata = metadata;
-      }
+        const searchOptions = DocumentSearchSchema.parse(processedQuery);
 
-      const searchOptions = DocumentSearchSchema.parse(processedQuery);
+        // Check if any actual search criteria were provided (not just pagination/sorting)
+        const hasActualSearchCriteria = !!(
+          searchOptions.filename ||
+          searchOptions.mimeType ||
+          (searchOptions.uploadedBy && user.role === UserRole.ADMIN) || // Only admins can search by specific user
+          (searchOptions.tags && searchOptions.tags.length > 0) ||
+          (searchOptions.metadata &&
+            Object.keys(searchOptions.metadata).length > 0)
+        );
 
-      // Check if any actual search criteria were provided (not just pagination/sorting)
-      const hasActualSearchCriteria = !!(
-        searchOptions.filename ||
-        searchOptions.mimeType ||
-        (searchOptions.uploadedBy && user.role === UserRole.ADMIN) || // Only admins can search by specific user
-        (searchOptions.tags && searchOptions.tags.length > 0) ||
-        (searchOptions.metadata &&
-          Object.keys(searchOptions.metadata).length > 0)
-      );
-
-      // If no search criteria provided, return empty results
-      if (!hasActualSearchCriteria) {
-        return c.json(
-          createSuccessResponse({
+        // If no search criteria provided, return empty results
+        if (!hasActualSearchCriteria) {
+          return {
             data: [],
             pagination: {
               page: searchOptions.page,
@@ -202,39 +186,35 @@ export class DocumentController {
               total: 0,
               totalPages: 0,
             },
-          })
+          };
+        }
+
+        // Scope search based on user role
+        let userSearchOptions;
+        if (user.role === UserRole.ADMIN) {
+          userSearchOptions = searchOptions;
+        } else {
+          userSearchOptions = {
+            ...searchOptions,
+            uploadedBy: user.userId,
+          };
+        }
+
+        const result = await this.documentService.searchDocuments(
+          userSearchOptions
         );
-      }
 
-      // Scope search based on user role
-      let userSearchOptions;
-      if (user.role === UserRole.ADMIN) {
-        userSearchOptions = searchOptions;
-      } else {
-        userSearchOptions = {
-          ...searchOptions,
-          uploadedBy: user.userId,
-        };
-      }
-
-      const result = await this.documentService.searchDocuments(
-        userSearchOptions
-      );
-
-      return c.json(
-        createSuccessResponse({
+        return {
           ...result,
           data: result.data.map(convertDocumentForResponse),
-        })
-      );
-    } catch (error) {
-      return handleControllerError(c, error);
-    }
+        };
+      },
+      "Documents searched successfully"
+    );
   };
 
   downloadDocument = async (c: Context) => {
     try {
-      // Require authentication for document download
       const authError = requireAuthenticatedUser(c);
       if (authError) return authError;
 
@@ -275,41 +255,37 @@ export class DocumentController {
   };
 
   deleteDocument = async (c: Context) => {
-    try {
-      const authError = requireAuthenticatedUser(c);
-      if (authError) return authError;
+    const authError = requireAuthenticatedUser(c);
+    if (authError) return authError;
 
-      const user = c.get("user");
-      const id = c.req.param("id");
-      const document = await this.documentService.getDocument(id);
+    const user = c.get("user");
+    const id = c.req.param("id");
 
-      if (!document) {
-        return createErrorResponse(
-          c,
-          "Document not found",
-          StatusCode.NOT_FOUND
-        );
-      }
+    return handleAsyncOperation(
+      c,
+      async () => {
+        const document = await this.documentService.getDocument(id);
 
-      if (document.uploadedBy !== user.userId && user.role !== UserRole.ADMIN) {
-        return createErrorResponse(c, "Access denied", StatusCode.FORBIDDEN);
-      }
+        if (!document) {
+          throw new Error("Document not found");
+        }
 
-      const deleted = await this.documentService.deleteDocument(id);
+        if (
+          document.uploadedBy !== user.userId &&
+          user.role !== UserRole.ADMIN
+        ) {
+          throw new Error("Access denied");
+        }
 
-      if (!deleted) {
-        return createErrorResponse(
-          c,
-          "Failed to delete document",
-          StatusCode.INTERNAL_SERVER_ERROR
-        );
-      }
+        const deleted = await this.documentService.deleteDocument(id);
 
-      return c.json(
-        createSuccessResponseWithoutData("Document deleted successfully")
-      );
-    } catch (error) {
-      return handleControllerError(c, error);
-    }
+        if (!deleted) {
+          throw new Error("Failed to delete document");
+        }
+
+        return null; // No data to return for delete operation
+      },
+      "Document deleted successfully"
+    );
   };
 }

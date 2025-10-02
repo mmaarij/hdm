@@ -9,6 +9,7 @@ import {
   createSuccessResponseWithoutData,
   createErrorResponse,
   requireAuthenticatedUser,
+  handleAsyncOperation,
 } from "../utils/responseHelpers";
 
 export class DownloadLinkController {
@@ -21,42 +22,35 @@ export class DownloadLinkController {
   }
 
   generateDownloadLink = async (c: Context) => {
-    try {
-      const authError = requireAuthenticatedUser(c);
-      if (authError) return authError;
+    const authError = requireAuthenticatedUser(c);
+    if (authError) return authError;
 
-      const user = c.get("user");
-      const documentId = c.req.param("documentId");
+    const user = c.get("user");
+    const documentId = c.req.param("documentId");
 
-      const document = await this.documentService.getDocument(documentId);
-      if (!document) {
-        return createErrorResponse(
-          c,
-          "Document not found",
-          StatusCode.NOT_FOUND
+    return handleAsyncOperation(
+      c,
+      async () => {
+        const document = await this.documentService.getDocument(documentId);
+        if (!document) {
+          throw new Error("Document not found"); // Auto-mapped to 404
+        }
+
+        const token = await this.downloadLinkService.generateDownloadLink(
+          documentId,
+          user.userId
         );
-      }
 
-      const token = await this.downloadLinkService.generateDownloadLink(
-        documentId,
-        user.userId
-      );
+        const downloadUrl = `/api/v1/download/${token}`;
 
-      const downloadUrl = `/api/v1/download/${token}`;
-
-      return c.json(
-        createSuccessResponse(
-          {
-            downloadUrl,
-            token,
-            expiresIn: "1h",
-          },
-          "Download link generated successfully"
-        )
-      );
-    } catch (error) {
-      return handleControllerError(c, error);
-    }
+        return {
+          downloadUrl,
+          token,
+          expiresIn: "1h",
+        };
+      },
+      "Download link generated successfully"
+    );
   };
 
   downloadWithToken = async (c: Context) => {
@@ -65,20 +59,12 @@ export class DownloadLinkController {
       const documentId = await this.downloadLinkService.useDownloadToken(token);
 
       if (!documentId) {
-        return createErrorResponse(
-          c,
-          "Invalid, expired, or already used download token",
-          StatusCode.FORBIDDEN
-        );
+        throw new Error("Invalid, expired, or already used download token"); // Auto-mapped to 401/403
       }
 
       const document = await this.documentService.getDocument(documentId);
       if (!document) {
-        return createErrorResponse(
-          c,
-          "Document not found",
-          StatusCode.NOT_FOUND
-        );
+        throw new Error("Document not found"); // Auto-mapped to 404
       }
 
       const fileData = await this.documentService.getFileData(document);
@@ -96,26 +82,19 @@ export class DownloadLinkController {
   };
 
   cleanupExpiredTokens = async (c: Context) => {
-    try {
-      const user = c.get("user");
-      if (!user || user.role !== UserRole.ADMIN) {
-        return createErrorResponse(
-          c,
-          "Admin access required",
-          StatusCode.FORBIDDEN
-        );
-      }
-
-      const cleanedCount =
-        await this.downloadLinkService.cleanupExpiredTokens();
-
-      return c.json(
-        createSuccessResponseWithoutData(
-          `Cleaned up ${cleanedCount} expired tokens`
-        )
-      );
-    } catch (error) {
-      return handleControllerError(c, error);
+    const user = c.get("user");
+    if (!user || user.role !== UserRole.ADMIN) {
+      throw new Error("Admin access required"); // Auto-mapped to 403
     }
+
+    return handleAsyncOperation(
+      c,
+      async () => {
+        const cleanedCount =
+          await this.downloadLinkService.cleanupExpiredTokens();
+        return { message: `Cleaned up ${cleanedCount} expired tokens` };
+      },
+      `Cleanup completed successfully`
+    );
   };
 }

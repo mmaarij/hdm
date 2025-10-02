@@ -12,6 +12,7 @@ import {
   createSuccessResponseWithoutData,
   createErrorResponse,
   requireAuthenticatedUser,
+  handleAsyncOperation,
 } from "../utils/responseHelpers";
 
 export class PermissionController {
@@ -22,118 +23,100 @@ export class PermissionController {
   }
 
   grantPermission = async (c: Context) => {
-    try {
-      const authError = requireAuthenticatedUser(c);
-      if (authError) return authError;
+    const authError = requireAuthenticatedUser(c);
+    if (authError) return authError;
 
-      const user = c.get("user");
-      const documentId = c.req.param("documentId");
-      const body = await c.req.json();
-      const validatedData = DocumentPermissionCreateSchema.parse(body);
+    const user = c.get("user");
+    const documentId = c.req.param("documentId");
+    const body = await c.req.json();
 
-      const permission = await this.permissionService.grantPermission(
-        documentId,
-        validatedData,
-        user.userId
-      );
-
-      return c.json(
-        createSuccessResponse(
-          convertPermissionForResponse(permission),
-          "Permission granted successfully"
-        ),
-        StatusCode.CREATED as any
-      );
-    } catch (error) {
-      return handleControllerError(c, error);
-    }
+    return handleAsyncOperation(
+      c,
+      async () => {
+        const validatedData = DocumentPermissionCreateSchema.parse(body);
+        const permission = await this.permissionService.grantPermission(
+          documentId,
+          validatedData,
+          user.userId
+        );
+        return convertPermissionForResponse(permission);
+      },
+      "Permission granted successfully",
+      StatusCode.CREATED
+    );
   };
 
   getDocumentPermissions = async (c: Context) => {
-    try {
-      const documentId = c.req.param("documentId");
+    const documentId = c.req.param("documentId");
+
+    return handleAsyncOperation(c, async () => {
       const permissions = await this.permissionService.getDocumentPermissions(
         documentId
       );
-
-      return c.json(createSuccessResponse(permissions));
-    } catch (error) {
-      return handleControllerError(c, error);
-    }
+      return permissions;
+    });
   };
 
   getUserPermissions = async (c: Context) => {
-    try {
-      const authError = requireAuthenticatedUser(c);
-      if (authError) return authError;
+    const authError = requireAuthenticatedUser(c);
+    if (authError) return authError;
 
-      const user = c.get("user");
+    const user = c.get("user");
+
+    return handleAsyncOperation(c, async () => {
       const permissions = await this.permissionService.getUserPermissions(
         user.userId
       );
-
-      return c.json(createSuccessResponse(permissions));
-    } catch (error) {
-      return handleControllerError(c, error);
-    }
+      return permissions;
+    });
   };
 
   updatePermission = async (c: Context) => {
-    try {
-      const authError = requireAuthenticatedUser(c);
-      if (authError) return authError;
+    const authError = requireAuthenticatedUser(c);
+    if (authError) return authError;
 
-      const permissionId = c.req.param("permissionId");
-      const body = await c.req.json();
-      const validatedData = DocumentPermissionUpdateSchema.parse(body);
+    const permissionId = c.req.param("permissionId");
+    const body = await c.req.json();
 
-      const permission = await this.permissionService.updatePermission(
-        permissionId,
-        validatedData
-      );
-
-      if (!permission) {
-        return createErrorResponse(
-          c,
-          "Permission not found",
-          StatusCode.NOT_FOUND
+    return handleAsyncOperation(
+      c,
+      async () => {
+        const validatedData = DocumentPermissionUpdateSchema.parse(body);
+        const permission = await this.permissionService.updatePermission(
+          permissionId,
+          validatedData
         );
-      }
 
-      return c.json(
-        createSuccessResponse(
-          convertPermissionForResponse(permission),
-          "Permission updated successfully"
-        )
-      );
-    } catch (error) {
-      return handleControllerError(c, error);
-    }
+        if (!permission) {
+          throw new Error("Permission not found"); // Auto-mapped to 404
+        }
+
+        return convertPermissionForResponse(permission);
+      },
+      "Permission updated successfully"
+    );
   };
 
   revokePermission = async (c: Context) => {
-    try {
-      const authError = requireAuthenticatedUser(c);
-      if (authError) return authError;
+    const authError = requireAuthenticatedUser(c);
+    if (authError) return authError;
 
-      const permissionId = c.req.param("permissionId");
-      const revoked = await this.permissionService.revokePermission(
-        permissionId
-      );
+    const permissionId = c.req.param("permissionId");
 
-      if (!revoked) {
-        return createErrorResponse(
-          c,
-          "Permission not found",
-          StatusCode.NOT_FOUND
+    return handleAsyncOperation(
+      c,
+      async () => {
+        const revoked = await this.permissionService.revokePermission(
+          permissionId
         );
-      }
 
-      return c.json(
-        createSuccessResponseWithoutData("Permission revoked successfully")
-      );
-    } catch (error) {
-      return handleControllerError(c, error);
-    }
+        if (!revoked) {
+          throw new Error("Permission not found"); // Auto-mapped to 404
+        }
+
+        return { message: "Permission revoked successfully" };
+      },
+      "Permission revoked successfully"
+    );
   };
 }
